@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,110 +9,114 @@
     <link rel="stylesheet" href="style.css">
     <script src="main.js" defer></script>
 </head>
+
 <body>
 
-<div class="container">
-    <h1>Estoque Hontec</h1>
+    <div class="container">
+        <h1>Analise Estoque Hontec</h1>
 
-    <div class="linha-botoes">
-        <button class="botao" onclick="document.getElementById('entrada-arquivo').click()">Abrir Arquivo</button>
-        <button class="botao" id="btn-ocultar" onclick="alternarConferidos()">Ocultar Conferidos</button>
-        <button class="botao" onclick="exportarCSV()">⬇ Exportar</button>
-        <button class="botao" id="btn-limpar" onclick="limpar()" style="display:none">Novo</button>
-    </div>
-
-    <input type="file" id="entrada-arquivo" accept=".csv" onchange="carregarCSV(this)">
-
-    <div class="legenda" id="info-arquivo">Nenhum arquivo carregado</div>
-
-    <input type="text" class="barra-busca" id="busca" placeholder="Buscar por código, nome ou locação..." oninput="filtrar()">
-
-    <div class="contador" id="contador">
-        <span id="cnt-conf">0</span> / <span id="cnt-total">0</span> itens conferidos
-    </div>
-
-    <div class="tabela-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>Status</th>
-                    <th>Locação</th>
-                    <th>Código</th>
-                    <th>Nome</th>
-                    <th>GTIN</th>
-                    <th>Quantidade</th>
-                </tr>
-            </thead>
-            <tbody id="corpo">
-                <tr>
-                    <td colspan="5" class="estado-vazio">Nenhum arquivo carregado — clique em Abrir CSV</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- MODAL  -->
-<div class="modal-overlay" id="modal-overlay" onclick="fecharModalFora(event)">
-    <div class="modal" id="modal">
-
-        <div class="modal-header">
-            <span class="modal-header-titulo">Conferência de Item</span>
-            <span class="modal-header-datetime" id="modal-datetime"></span>
-            <button class="modal-fechar" onclick="fecharModal()">✕</button>
+        <div class="linha-botoes">
+            <button class="botao" onclick="document.getElementById('entrada-arquivo').click()">Abrir Arquivo</button>
+            <button class="botao" id="btn-ocultar" onclick="alternarConferidos()">Ocultar Conferidos</button>
+            <button class="botao" onclick="exportarCSV()">⬇ Exportar</button>
+            <button class="botao" id="btn-limpar" onclick="limpar()" style="display:none">Novo</button>
         </div>
 
-        <div class="modal-body">
+        <input type="file" id="entrada-arquivo" accept=".csv" onchange="carregarCSV(this)">
 
-            <!-- Linha 1: LOC | MARCA -->
-            <div class="modal-row row-loc-marca">
-                <div class="modal-cell">
-                    <span class="modal-cell-label">Locação</span>
-                    <span class="modal-cell-value" id="modal-locacao">—</span>
-                </div>
-                <div class="modal-cell">
-                    <span class="modal-cell-label">Marca</span>
-                    <input class="modal-cell-input" id="modal-marca" type="text" placeholder="">
-                </div>
-            </div>
+        <div class="legenda" id="info-arquivo">Nenhum arquivo carregado</div>
 
-            <!-- Linha 2: COD + NOME -->
-            <div class="modal-row row-cod-nome">
-                <div class="modal-cell">
-                    <span class="modal-cell-label">Código + Nome</span>
-                    <span class="modal-cell-value" id="modal-cod-nome">—</span>
-                </div>
-            </div>
+        <input type="text" class="barra-busca" id="busca" placeholder="Buscar por código, nome ou locação..."
+            oninput="filtrar()">
 
-            
-
-            <!-- Linha 4: GTIN ANTIGO -->
-            <div class="modal-row row-gtin">
-                <div class="modal-cell">
-                    <span class="modal-cell-label">GTIN Antigo</span>
-                    <input class="modal-cell-input" id="modal-gtin-antigo" type="text" placeholder="">
-                </div>
-            </div>
-
-            <!-- Linha 5: GTIN NOVO -->
-            <div class="modal-row row-gtin">
-                <div class="modal-cell">
-                    <span class="modal-cell-label">GTIN Novo</span>
-                    <input class="modal-cell-input" id="modal-gtin-novo" type="text" placeholder="">
-                </div>
-            </div>
-
-            <!-- Linha 6: QTDO -->
-            <div class="modal-row row-qtdo">
-                <div class="modal-cell">
-                    <span class="modal-cell-label">Quantidade</span>
-                    <input class="modal-cell-input" id="modal-qtdo" type="number" min="0" step="any" placeholder="0">
-                </div>
-            </div>
-
+        <div class="contador" id="contador">
+            <span id="cnt-conf">0</span> / <span id="cnt-total">0</span> itens conferidos
         </div>
 
-          <div class="modal-row row-marca-foto">
+        <div class="tabela-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Locação</th>
+                        <th>Marca</th>
+                        <th>Código</th>
+                        <th>Nome</th>
+                        <th>GTIN</th>
+                        
+                    </tr>
+                </thead>
+                <tbody id="corpo">
+                    <tr>
+                        <td colspan="5" class="estado-vazio">Nenhum arquivo carregado — clique em Abrir CSV</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODAL  -->
+    <div class="modal-overlay" id="modal-overlay" onclick="fecharModalFora(event)">
+        <div class="modal" id="modal">
+
+            <div class="modal-header">
+                <span class="modal-header-titulo">Conferência de Item</span>
+                <span class="modal-header-datetime" id="modal-datetime"></span>
+                <button class="modal-fechar" onclick="fecharModal()">✕</button>
+            </div>
+
+            <div class="modal-body">
+
+                <!-- Linha 1: LOC | MARCA -->
+                <div class="modal-row row-loc-marca">
+                    <div class="modal-cell">
+                        <span class="modal-cell-label">Locação</span>
+                        <input class="modal-cell-input" id="modal-locacao">
+                    </div>
+                    <div class="modal-cell">
+                        <span class="modal-cell-label">Marca</span>
+                        <input class="modal-cell-input" id="modal-marca" type="text" placeholder="">
+                    </div>
+                </div>
+
+                <!-- Linha 2: COD + NOME -->
+                <div class="modal-row row-cod-nome">
+                    <div class="modal-cell">
+                        <span class="modal-cell-label">Código + Nome</span>
+                        <span class="modal-cell-value" id="modal-cod-nome">—</span>
+                    </div>
+                </div>
+
+
+
+                <!-- Linha 4: GTIN ANTIGO -->
+                <div class="modal-row row-gtin">
+                    <div class="modal-cell">
+                        <span class="modal-cell-label">GTIN Antigo</span>
+                        <span class="modal-cell-input" id="modal-gtin-antigo" type="text" placeholder=""></span>
+                    </div>
+                </div>
+
+                <!-- Linha 5: GTIN NOVO -->
+                <div class="modal-row row-gtin">
+                    <div class="modal-cell">
+                        <span class="modal-cell-label">GTIN Novo</span>
+                        <input class="modal-cell-input" id="modal-gtin-novo" type="text" placeholder="">
+                    </div>
+                </div>
+
+                <!-- Linha 6: QTDO -->
+                <div class="modal-row row-qtdo">
+                    <div class="modal-cell">
+                        <span class="modal-cell-label">Quantidade</span>
+                        <input class="modal-cell-input" id="modal-qtdo" type="number" min="0" step="any"
+                            placeholder="0">
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="modal-row row-marca-foto">
                 <div class="foto-area" onclick="document.getElementById('foto-input').click()">
                     <div class="foto-placeholder" id="foto-placeholder">📷</div>
                     <span class="foto-label">Foto</span>
@@ -119,13 +124,15 @@
                 </div>
             </div>
 
-        <div class="modal-actions">
-            <button class="modal-btn modal-btn-cancelar" onclick="fecharModal()">Cancelar</button>
-            <button class="modal-btn modal-btn-confirmar" id="modal-btn-confirmar" onclick="confirmarModal()">Confirmar</button>
-        </div>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancelar" onclick="fecharModal()">Cancelar</button>
+                <button class="modal-btn modal-btn-confirmar" id="modal-btn-confirmar"
+                    onclick="confirmarModal()">Confirmar</button>
+            </div>
 
+        </div>
     </div>
-</div>
 
 </body>
+
 </html>

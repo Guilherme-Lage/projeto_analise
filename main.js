@@ -12,16 +12,22 @@ function abrirModal(globalIdx) {
     const dt = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     document.getElementById('modal-datetime').textContent = dt;
 
-    // Preencher campos
-    document.getElementById('modal-locacao').textContent = item.locacao || '—';
+    // Preencher campos (Texto fixo)
+    document.getElementById('modal-locacao').value = item.locacao || '—';
     document.getElementById('modal-cod-nome').textContent = `${item.codigo} — ${item.nome}`;
-
 
     // Campos editáveis
     document.getElementById('modal-marca').value = item.marca || '';
-    document.getElementById('modal-gtin-antigo').value = item.gtinAntigo || '';
+
+    //  Preenche com o GTIN do CSV se ainda não tiver um conferido
+    document.getElementById('modal-gtin-antigo').textContent = item.gtinAntigo || item.gtinOriginal || '';
+
     document.getElementById('modal-gtin-novo').value = item.gtinNovo || '';
-    document.getElementById('modal-qtdo').value = item.qtdConferida != null ? item.qtdConferida : (item.qtd % 1 === 0 ? item.qtd.toFixed(0) : item.qtd.toFixed(2));
+
+    // Formata a quantidade para o input
+    document.getElementById('modal-qtdo').value = item.qtdConferida != null
+        ? item.qtdConferida
+        : (item.qtd % 1 === 0 ? item.qtd.toFixed(0) : item.qtd.toFixed(2));
 
     // Foto
     const ph = document.getElementById('foto-placeholder');
@@ -42,8 +48,15 @@ function abrirModal(globalIdx) {
     }
 
     document.getElementById('modal-overlay').classList.add('aberto');
-    document.getElementById('modal-marca').focus();
+
+
+    setTimeout(() => {
+        const campoQtd = document.getElementById('modal-qtdo');
+        campoQtd.focus();
+        campoQtd.select();
+    }, 150);
 }
+
 
 function fecharModal() {
     document.getElementById('modal-overlay').classList.remove('aberto');
@@ -66,43 +79,41 @@ function carregarFoto(input) {
     };
     reader.readAsDataURL(input.files[0]);
 }
-
 function confirmarModal() {
     if (idxModalAtual < 0) return;
 
+
+    const elLoc   = document.getElementById('modal-locacao-input');
+    const elMarca = document.getElementById('modal-marca');
+    const elGtinN = document.getElementById('modal-gtin-novo');
+    const elQtd   = document.getElementById('modal-qtdo');
+
     const item = itens[idxModalAtual];
+    // Salva os dados forçando MAIÚSCULO (UpperCase) para o CSV
 
-    // Salvar dados extras
-    item.marca = document.getElementById('modal-marca').value.trim();
-    item.gtinAntigo = document.getElementById('modal-gtin-antigo').value.trim();
-    item.gtinNovo = document.getElementById('modal-gtin-novo').value.trim();
-    const qtdVal = document.getElementById('modal-qtdo').value;
-    item.qtdConferida = qtdVal !== '' ? parseFloat(qtdVal) : null;
-
-    // Toggle conferido
-    item.conferido = !item.conferido;
-
-    // Atualizar linha na tabela
-    const tr = document.getElementById(`linha-${idxModalAtual}`);
-    const q = document.getElementById(`q-${idxModalAtual}`);
-
-    if (tr) {
-        if (item.conferido) {
-            tr.classList.add('conferido');
-            q.classList.add('ok');
-            q.textContent = '✓';
-            if (ocultar) setTimeout(() => { tr.style.display = 'none'; }, 300);
-        } else {
-            tr.classList.remove('conferido');
-            q.classList.remove('ok');
-            q.textContent = '';
-            tr.style.display = '';
-        }
+    if (elLoc && elLoc.value.trim() !== "") {
+        item.locacao = elLoc.value.trim().toUpperCase();
     }
 
-    atualizarContador();
+    if (elMarca) item.marca    = elMarca.value.trim().toUpperCase();
+    if (elGtinN) item.gtinNovo = elGtinN.value.trim().toUpperCase();
+    
+    if (elQtd) {
+        const qtdVal = elQtd.value;
+        item.qtdConferida = qtdVal !== '' ? parseFloat(qtdVal) : null;
+    }
+
+
+    item.conferido = !item.conferido;
+
+    localStorage.setItem('estoque_hontec_backup', JSON.stringify(itens));
+
+    renderizarTabela(itens);
+    if (typeof atualizarContador === "function") atualizarContador();
+    
     fecharModal();
 }
+
 
 //  CSV 
 
@@ -122,15 +133,20 @@ function limparAspas(val) {
     if (!val) return '';
     return val.replace(/^"|"$/g, '').trim();
 }
-
 function processarCSV(texto, nomeArquivo) {
     const linhas = texto.split(/\r?\n/).filter(l => l.trim());
-    if (linhas.length < 2) { alert('Arquivo CSV vazio ou inválido.'); return; }
+    if (linhas.length < 2) {
+        alert('Arquivo CSV vazio ou inválido.');
+        return;
+    }
 
-    const sep = linhas[0].includes('|') ? '|' : ',';
+    // Identifica o separador (Prioriza o pipe | que você usa na exportação)
+    const sep = linhas[0].includes('|') ? '|' : (linhas[0].includes(';') ? ';' : ',');
+
     const cabecalho = linhas[0].split(sep).map(limparAspas);
-    const idx = (nome) => cabecalho.findIndex(c => c.toUpperCase().includes(nome.toUpperCase()));
+    const idx = (nome) => cabecalho.findIndex(c => c.toUpperCase().trim().includes(nome.toUpperCase()));
 
+    // Mapeamento das colunas baseadas no seu banco de dados
     const iCodigo = idx('ITEM_ESTOQUE_PUB');
     const iNome = idx('DES_ITEM_ESTOQUE');
     const iQtd = idx('QTD_CONTABIL');
@@ -139,32 +155,49 @@ function processarCSV(texto, nomeArquivo) {
     const iEstante = idx('LOCACAO_ESTANTE');
     const iPrateleira = idx('LOCACAO_PRATELEIRA');
     const iNumero = idx('LOCACAO_NUMERO');
+    const iGtinOriginal = idx('GTIN'); 
 
     itens = [];
 
     for (let i = 1; i < linhas.length; i++) {
         const cols = linhas[i].split(sep).map(limparAspas);
-        if (cols.length < 3) continue;
+        if (cols.length < 2) continue;
 
+        // Monta a string de locação (Ex: A.12.01.04)
         const locacao = [iZona, iRua, iEstante, iPrateleira, iNumero]
-            .map(x => x >= 0 ? cols[x] : '')
+            .map(x => (x >= 0 && cols[x]) ? cols[x] : '')
             .filter(Boolean).join('.');
 
         const codigo = iCodigo >= 0 ? cols[iCodigo] : `item-${i}`;
         const nome = iNome >= 0 ? cols[iNome] : '---';
-        const qtd = parseFloat((iQtd >= 0 ? cols[iQtd] : '0').replace(',', '.')) || 0;
+        const gtinCSV = iGtinOriginal >= 0 ? cols[iGtinOriginal] : '---';
+
+        // Converte quantidade tratando vírgula decimal brasileira
+        const qtdRaw = iQtd >= 0 ? cols[iQtd] : '0';
+        const qtd = parseFloat(qtdRaw.replace(',', '.')) || 0;
 
         itens.push({
-            locacao, codigo, nome, qtd,
+            locacao,
+            codigo,
+            nome,
+            qtd,
+            gtinOriginal: gtinCSV,
             conferido: false,
-            marca: '', gtinAntigo: '', gtinNovo: '',
-            qtdConferida: null, foto: null
+            marca: '',
+            gtinAntigo: '',
+            gtinNovo: '',
+            qtdConferida: null,
+            foto: null
         });
     }
 
     renderizarTabela(itens);
-    document.getElementById('info-arquivo').textContent = `📄 ${nomeArquivo} — ${itens.length} itens`;
+
+    // Atualiza interface
+    document.getElementById('info-arquivo').style.display = 'block';
+    document.getElementById('info-arquivo').textContent = ` ${nomeArquivo} — ${itens.length} itens`;
     document.getElementById('btn-limpar').style.display = 'inline-block';
+
     atualizarContador();
 }
 
@@ -173,7 +206,7 @@ function renderizarTabela(lista) {
     corpo.innerHTML = '';
 
     if (lista.length === 0) {
-        corpo.innerHTML = '<tr><td colspan="5" class="estado-vazio">Nenhum item encontrado</td></tr>';
+        corpo.innerHTML = '<tr><td colspan="6" class="estado-vazio">Nenhum item encontrado</td></tr>';
         return;
     }
 
@@ -181,29 +214,34 @@ function renderizarTabela(lista) {
         const globalIdx = itens.indexOf(item);
         const tr = document.createElement('tr');
         tr.id = `linha-${globalIdx}`;
+        
         if (item.conferido) tr.classList.add('conferido');
-        if (ocultar && item.conferido) tr.style.display = 'none';
+        
+        const buscaAtiva = document.getElementById('busca').value.trim() !== '';
+        if (ocultar && item.conferido && !buscaAtiva) {
+            tr.style.display = 'none';
+        }
 
         tr.onclick = () => abrirModal(globalIdx);
-        tr.style.cursor = 'pointer';
 
-        const qtdFormatada = item.qtd % 1 === 0 ? item.qtd.toFixed(0) : item.qtd.toFixed(2);
-
+        // NOVA ORDEM: Status | Locação | Marca | Código | Nome | GTIN
         tr.innerHTML = `
             <td class="col-status">
                 <div class="quadrado ${item.conferido ? 'ok' : ''}" id="q-${globalIdx}">
                     ${item.conferido ? '✓' : ''}
                 </div>
             </td>
-            <td class="col-locacao" title="${item.locacao}">${item.locacao || '---'}</td>
+            <td class="col-locacao">${item.locacao || '---'}</td>
+            <td class="col-marca">${item.marca || '---'}</td> 
             <td class="col-codigo">${item.codigo}</td>
             <td class="col-nome" title="${item.nome}">${item.nome}</td>
-            <td class="col-qtd">${qtdFormatada}</td>
+            <td class="col-gtin">${item.gtinOriginal || '---'}</td>
         `;
         corpo.appendChild(tr);
     });
 
     document.getElementById('contador').style.display = 'block';
+    atualizarContador();
 }
 
 function atualizarContador() {
@@ -223,7 +261,7 @@ function atualizarContador() {
     }
 }
 
-function filtrar() {
+
     function filtrar() {
         const busca = document.getElementById('busca').value.toLowerCase().trim();
 
@@ -250,7 +288,6 @@ function filtrar() {
         });
     }
 
-}
 
 function alternarConferidos() {
     ocultar = !ocultar;
@@ -265,10 +302,10 @@ function alternarConferidos() {
 function exportarCSV() {
     if (itens.length === 0) { alert('Carregue um arquivo primeiro!'); return; }
 
-    const linhas = ['STATUS|LOCACAO|CODIGO|NOME|QUANTIDADE|QTD_CONFERIDA|MARCA|GTIN_ANTIGO|GTIN_NOVO'];
+    const linhas = ['STATUS|MARCA|CODIGO|NOME|QUANTIDADE|QTD_CONFERIDA|GTIN_ANTIGO|GTIN_NOVO|LOCACAO'];
     itens.forEach(i => {
         const qtdC = i.qtdConferida != null ? i.qtdConferida : '';
-        linhas.push(`${i.conferido ? 'OK' : 'PENDENTE'}|${i.locacao}|${i.codigo}|${i.nome}|${i.qtd}|${qtdC}|${i.marca}|${i.gtinAntigo}|${i.gtinNovo}`);
+        linhas.push(`${i.conferido ? 'OK' : 'PENDENTE'}|${i.marca}|${i.codigo}|${i.nome}|${i.qtd}|${qtdC}|${i.gtinAntigo}|${i.gtinNovo}|${i.locacao}`);
     });
 
     const blob = new Blob([linhas.join('\n')], { type: 'text/plain;charset=utf-8' });
@@ -292,7 +329,7 @@ window.onload = () => {
 function limpar() {
     if (!confirm("Isso apagará todo o progresso atual. Confirmar?")) return;
     localStorage.removeItem('estoque_hontec_backup');
-    
+
     itens = [];
     document.getElementById('corpo').innerHTML = '<tr><td colspan="5" class="estado-vazio">Nenhum arquivo carregado — clique em Abrir CSV</td></tr>';
     document.getElementById('info-arquivo').textContent = 'Nenhum arquivo carregado';
