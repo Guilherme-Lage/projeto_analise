@@ -24,11 +24,18 @@
 
         <input type="file" id="entrada-arquivo" accept=".csv" onchange="carregarCSV(this)">
 
-        <div class="legenda" id="info-arquivo">Nenhum arquivo carregado</div>
+        <div class="grupo-busca">
+            <select id="filtro-tipo" onchange="filtrar()">
+                <option value="todos">TUDO</option>
+                <option value="locacao">LOCAÇÃO</option>
+                <option value="marca">MARCA</option>
+                <option value="codigo">CÓDIGO</option>
+                <option value="nome">NOME</option>
+            </select>
 
-        <input type="text" class="barra-busca" id="busca" placeholder="Buscar por código, nome ou locação..."
-            oninput="filtrar()">
-
+            <input type="text" class="barra-busca" id="busca" placeholder="BUSCAR POR CÓDIGO, NOME OU LOCAÇÃO..."
+                oninput="filtrar()">
+        </div>
         <div class="contador" id="contador">
             <span id="cnt-conf">0</span> / <span id="cnt-total">0</span> itens conferidos
         </div>
@@ -43,7 +50,7 @@
                         <th>Código</th>
                         <th>Nome</th>
                         <th>GTIN</th>
-                        
+
                     </tr>
                 </thead>
                 <tbody id="corpo">
