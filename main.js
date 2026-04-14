@@ -32,7 +32,7 @@ function abrirModal(globalIdx) {
 
         // 6. Quantidade (ESTA SIM SEMPRE VEM ZERADA)
         const elQtd = document.getElementById('modal-qtdo');
-        if (elQtd) elQtd.value = 0;
+        if (elQtd) elQtd.value = item.qtdConferida != null ? item.qtdConferida : '';
 
         // 7. Foto
         const ph = document.getElementById('foto-placeholder');
@@ -51,9 +51,10 @@ function abrirModal(globalIdx) {
         // 9. Abrir e Focar na Quantidade
         document.getElementById('modal-overlay').classList.add('aberto');
         setTimeout(() => {
-            if (elQtd) {
-                elQtd.focus();
-                elQtd.select();
+            const elGtinNovo = document.getElementById('modal-gtin-novo');
+            if (elGtinNovo) {
+                elGtinNovo.focus();
+                elGtinNovo.select();
             }
         }, 150);
 
