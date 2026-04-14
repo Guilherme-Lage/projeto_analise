@@ -1,614 +1,712 @@
 * {
-           box-sizing: border-box;
-           margin: 0;
-           padding: 0;
-       }
-
-       body {
-           font-family: 'IBM Plex Mono', monospace;
-           background: #f0ede8;
-           min-height: 100vh;
-           padding: 24px 16px;
-           color: #1a1a1a;
-       }
-
-       .container {
-           max-width: 860px;
-           margin: 0 auto;
-       }
-
-       input {
-           text-transform: uppercase;
-       }
-
-       h1 {
-           font-size: 1.8rem;
-           font-weight: 600;
-           letter-spacing: 0.12em;
-           text-transform: uppercase;
-           color: #00009C;
-           margin-bottom: 20px;
-           text-align: center;
-       }
-
-       .linha-botoes {
-           display: flex;
-           flex-wrap: wrap;
-           gap: 10px;
-           margin-bottom: 16px;
-       }
-
-       .botao {
-           font-family: 'IBM Plex Mono', monospace;
-           font-size: 12px;
-           font-weight: 500;
-           padding: 10px 18px;
-           background: #fff;
-           border: 1.5px solid #1a1a1a;
-           border-radius: 4px;
-           cursor: pointer;
-           transition: background 0.15s, color 0.15s;
-           white-space: nowrap;
-           flex: 1;
-           min-width: 120px;
-       }
-
-       .botao:hover {
-           background: #00009C;
-           color: #fff;
-           border-color: #00009C;
-       }
-
-       .botao:disabled {
-           opacity: 0.5;
-           cursor: not-allowed;
-       }
-
-       #entrada-arquivo {
-           display: none;
-       }
-
-       .barra-busca {
-           width: 100%;
-           font-family: 'IBM Plex Mono', monospace;
-           font-size: 12px;
-           padding: 10px 14px;
-           border: 1.5px solid #1a1a1a;
-           border-radius: 4px;
-           background: #fff;
-           margin-bottom: 16px;
-           outline: none;
-       }
-
-       .barra-busca:focus {
-           border-color: #00009C;
-       }
-
-       .contador {
-           display: none;
-           font-size: 12px;
-           font-weight: 600;
-           padding: 10px 14px;
-           border: 1.5px solid #1a1a1a;
-           border-radius: 4px;
-           margin-bottom: 16px;
-           background: #fff;
-           transition: background 0.3s, color 0.3s;
-       }
-
-       .tabela-wrapper {
-           background: #fff;
-           border: 2px solid #1a1a1a;
-           border-radius: 6px;
-           overflow: hidden;
-           min-height: 200px;
-           margin-bottom: 16px;
-           text-transform: uppercase;
-       }
-
-       table {
-           width: 100%;
-           border-collapse: collapse;
-           table-layout: fixed;
-       }
-
-       thead tr {
-           background: #CC0000;
-           color: #fff;
-       }
-
-       thead th {
-           font-size: 11px;
-           font-weight: 500;
-           letter-spacing: 0.08em;
-           text-transform: uppercase;
-           padding: 10px 12px;
-           text-align: left;
-       }
-
-       th:nth-child(1) {
-           width: 6%;
-           text-align: center;
-       }
-
-       /* Status */
-       th:nth-child(2) {
-           width: 14%;
-       }
-
-       /* Locação */
-       th:nth-child(3) {
-           width: 12%;
-       }
-
-       /* Marca */
-       th:nth-child(4) {
-           width: 12%;
-       }
-
-       /* Código */
-       th:nth-child(5) {
-           width: 40%;
-       }
-
-       /* Nome */
-       th:nth-child(6) {
-           width: 16%;
-       }
-
-       /* GTIN */
-
-
-       tbody tr {
-           border-bottom: 1px solid #e8e8e8;
-           transition: background 0.15s;
-           cursor: pointer;
-       }
-
-       tbody tr:last-child {
-           border-bottom: none;
-       }
-
-       tbody tr:hover {
-           background: #f9f7f4;
-       }
-
-       tbody tr.conferido {
-           background: #edf7f0;
-       }
-
-       tbody tr.conferido td {
-           color: #2d7a4a;
-       }
-
-       td {
-           font-size: 12px;
-           padding: 10px 12px;
-           vertical-align: middle;
-           overflow: hidden;
-           text-overflow: ellipsis;
-           white-space: nowrap;
-       }
-
-       td.col-status {
-           text-align: center;
-       }
-
-       td.col-qtd {
-           text-align: center;
-           font-weight: 600;
-       }
-
-       td.col-codigo {
-           font-weight: 600;
-       }
-
-       .quadrado {
-           width: 22px;
-           height: 22px;
-           border: 2px solid #ccc;
-           border-radius: 3px;
-           display: inline-flex;
-           align-items: center;
-           justify-content: center;
-           font-size: 13px;
-           font-weight: bold;
-           transition: all 0.2s;
-           background: #fff;
-       }
-
-       .quadrado.ok {
-           background: #2d7a4a;
-           border-color: #2d7a4a;
-           color: #fff;
-       }
-
-       .estado-vazio {
-           padding: 48px 24px;
-           text-align: center;
-           font-size: 12px;
-           color: #aaa;
-           letter-spacing: 0.06em;
-       }
-
-       .legenda {
-           font-size: 11px;
-           color: #888;
-           margin-bottom: 12px;
-       }
-
-       #info-arquivo {
-           display: none;
-           font-size: 11px;
-           color: #888;
-           margin-bottom: 10px;
-       }
-
-       /* ===== MODAL ===== */
-       .modal-overlay {
-           display: none;
-           position: fixed;
-           inset: 0;
-           background: rgba(0, 0, 0, 0.55);
-           z-index: 1000;
-           align-items: center;
-           justify-content: center;
-           padding: 16px;
-       }
-
-       .modal-overlay.aberto {
-           display: flex;
-           animation: fadeIn 0.18s ease;
-       }
-
-       @keyframes fadeIn {
-           from {
-               opacity: 0;
-           }
-
-           to {
-               opacity: 1;
-           }
-       }
-
-       .modal {
-           background: #fff;
-           border: 2px solid #1a1a1a;
-           border-radius: 8px;
-           width: 100%;
-           max-width: 480px;
-           font-family: 'IBM Plex Mono', monospace;
-           animation: slideUp 0.2s ease;
-           overflow: hidden;
-       }
-
-       @keyframes slideUp {
-           from {
-               transform: translateY(20px);
-               opacity: 0;
-           }
-
-           to {
-               transform: translateY(0);
-               opacity: 1;
-           }
-       }
-
-       /* Cabeçalho: DATA HORA */
-       .modal-header {
-           background: #CC0000;
-           color: #fff;
-           padding: 10px 16px;
-           display: flex;
-           justify-content: space-between;
-           align-items: center;
-       }
-
-       .modal-header-titulo {
-           font-size: 11px;
-           font-weight: 600;
-           letter-spacing: 0.1em;
-           text-transform: uppercase;
-       }
-
-       .modal-header-datetime {
-           font-size: 11px;
-           opacity: 0.9;
-       }
-
-       .modal-fechar {
-           background: none;
-           border: none;
-           color: #fff;
-           font-size: 18px;
-           cursor: pointer;
-           line-height: 1;
-           padding: 0 0 0 12px;
-           opacity: 0.8;
-       }
-
-       .modal-fechar:hover {
-           opacity: 1;
-       }
-
-       /* Grade de campos inspirada no desenho */
-       .modal-body {
-           padding: 0;
-       }
-
-       .modal-row {
-           display: grid;
-           border-bottom: 1.5px solid #e8e8e8;
-       }
-
-       .modal-row:last-child {
-           border-bottom: none;
-       }
-
-       /* LOC + MARCA */
-       .modal-row.row-loc-marca {
-           grid-template-columns: 1fr 1fr;
-       }
-
-       /* COD + NOME */
-       .modal-row.row-cod-nome {
-           grid-template-columns: 1fr;
-       }
-
-       /* FOTO */
-       .modal-row.row-marca-foto {
-           grid-template-columns: 1fr 1fr;
-       }
-
-       /* GTIN ANTIGO / NOVO */
-       .modal-row.row-gtin {
-           grid-template-columns: 1fr;
-       }
-
-       /* QTDO */
-       .modal-row.row-qtdo {
-           grid-template-columns: 1fr;
-       }
-
-       .modal-cell {
-           padding: 10px 14px;
-           border-right: 1.5px solid #e8e8e8;
-           display: flex;
-           flex-direction: column;
-           gap: 4px;
-       }
-
-       .modal-cell:last-child {
-           border-right: none;
-       }
-
-       .modal-cell-label {
-           font-size: 9px;
-           font-weight: 600;
-           letter-spacing: 0.12em;
-           text-transform: uppercase;
-           color: #888;
-       }
-
-       .modal-cell-label.riscado {
-           text-decoration: line-through;
-           color: #bbb;
-       }
-
-       .modal-cell-value {
-           font-size: 13px;
-           font-weight: 500;
-           color: #1a1a1a;
-           word-break: break-word;
-           white-space: normal;
-       }
-
-       .modal-cell-input {
-           font-family: 'IBM Plex Mono', monospace;
-           font-size: 13px;
-           font-weight: 500;
-           color: #1a1a1a;
-           border: none;
-           outline: none;
-           background: transparent;
-           width: 100%;
-           padding: 0;
-       }
-
-       .modal-cell-input:focus {
-           border-bottom: 1.5px solid #00009C;
-       }
-
-       /* Área de foto */
-       .foto-area {
-           display: flex;
-           flex-direction: column;
-           align-items: center;
-           justify-content: center;
-           gap: 6px;
-           padding: 10px 14px;
-           cursor: pointer;
-           position: relative;
-       }
-
-       .foto-area input[type=file] {
-           display: none;
-       }
-
-       .foto-placeholder {
-           width: 80px;
-           height: 60px;
-           border: 2px dashed #ccc;
-           border-radius: 4px;
-           display: flex;
-           align-items: center;
-           justify-content: center;
-           font-size: 22px;
-           color: #ccc;
-           background: #fafafa;
-           transition: border-color 0.2s;
-           overflow: hidden;
-       }
-
-       .foto-area:hover .foto-placeholder {
-           border-color: #00009C;
-       }
-
-       .foto-placeholder img {
-           width: 100%;
-           height: 100%;
-           object-fit: cover;
-       }
-
-       .foto-label {
-           font-size: 9px;
-           letter-spacing: 0.1em;
-           text-transform: uppercase;
-           color: #888;
-       }
-
-       /* Linha inferior: BEST MARCA + FOTO */
-       .modal-footer-info {
-           background: #f7f5f2;
-           border-top: 1.5px solid #e8e8e8;
-           padding: 8px 14px;
-           display: flex;
-           justify-content: space-between;
-           align-items: center;
-           font-size: 10px;
-           color: #aaa;
-           letter-spacing: 0.08em;
-           text-transform: uppercase;
-       }
-
-       /* Botões do modal */
-       .modal-actions {
-           display: grid;
-           grid-template-columns: 1fr 1fr;
-           border-top: 2px solid #1a1a1a;
-       }
-
-       .modal-btn {
-           font-family: 'IBM Plex Mono', monospace;
-           font-size: 12px;
-           font-weight: 600;
-           letter-spacing: 0.08em;
-           text-transform: uppercase;
-           padding: 14px;
-           border: none;
-           cursor: pointer;
-           transition: background 0.15s, color 0.15s;
-       }
-
-       .modal-btn-cancelar {
-           background: #fff;
-           color: #1a1a1a;
-           border-right: 1px solid #e8e8e8;
-       }
-
-       .modal-btn-cancelar:hover {
-           background: #f0ede8;
-       }
-
-       .modal-btn-confirmar {
-           background: #00009C;
-           color: #fff;
-       }
-
-       .modal-btn-confirmar:hover {
-           background: #0000c8;
-       }
-
-       .modal-btn-confirmar.ja-conferido {
-           background: #CC0000;
-       }
-
-       .modal-btn-confirmar.ja-conferido:hover {
-           background: #ee0000;
-       }
-
-       /*  FIM MODAL */
-
-       @media (max-width: 600px) {
-           h1 {
-               font-size: 1.2rem;
-           }
-
-           .linha-botoes {
-               flex-direction: column;
-           }
-
-           .botao {
-               width: 100%;
-           }
-
-           thead {
-               display: none;
-           }
-
-           tbody tr {
-               display: grid;
-               grid-template-columns: 32px 1fr 1fr;
-               grid-template-areas:
-                   "status codigo locacao"
-                   "status nome nome"
-                   "status qtd qtd";
-               padding: 10px;
-               border-bottom: 2px solid #eee;
-               gap: 4px;
-           }
-
-           td {
-               display: block;
-               padding: 2px 4px !important;
-               white-space: normal;
-           }
-
-           td.col-status {
-               grid-area: status;
-               display: flex;
-               align-items: center;
-           }
-
-           td.col-locacao {
-               grid-area: locacao;
-               font-size: 14px;
-               text-align: right;
-           }
-
-           td.col-codigo {
-               grid-area: codigo;
-               font-size: 11px;
-           }
-
-           td.col-nome {
-               grid-area: nome;
-               font-weight: 600;
-               font-size: 13px;
-           }
-
-           td.col-qtd {
-               grid-area: qtd;
-               text-align: left;
-           }
-
-           .modal {
-               max-width: 100%;
-               margin: 0;
-               border-radius: 12px 12px 0 0;
-               position: fixed;
-               top: 0;
-               left: 0;
-               right: 0;
-           }
-
-           .modal-overlay.aberto {
-               align-items: flex-end;
-               padding: 0;
-           }
-       }
-
-       .grupo-busca {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'IBM Plex Mono', monospace;
+    background: #f0ede8;
+    min-height: 100vh;
+    padding: 24px 16px;
+    color: #1a1a1a;
+}
+
+.container {
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+input {
+    text-transform: uppercase;
+}
+
+h1 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #00009C;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.linha-botoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.botao {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 10px 18px;
+    background: #fff;
+    border: 1.5px solid #1a1a1a;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 120px;
+}
+
+.botao:hover {
+    background: #00009C;
+    color: #fff;
+    border-color: #00009C;
+}
+
+.botao:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#entrada-arquivo {
+    display: none;
+}
+
+.barra-busca {
+    width: 100%;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 10px 14px;
+    border: 1.5px solid #1a1a1a;
+    border-radius: 4px;
+    background: #fff;
+    margin-bottom: 16px;
+    outline: none;
+}
+
+.barra-busca:focus {
+    border-color: #00009C;
+}
+
+.contador {
+    display: none;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 10px 14px;
+    border: 1.5px solid #1a1a1a;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    background: #fff;
+    transition: background 0.3s, color 0.3s;
+}
+
+.tabela-wrapper {
+    background: #fff;
+    border: 2px solid #1a1a1a;
+    border-radius: 6px;
+    overflow: hidden;
+    min-height: 200px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+thead tr {
+    background: #CC0000;
+    color: #fff;
+}
+
+thead th {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 10px 12px;
+    text-align: left;
+}
+
+th:nth-child(1) {
+    width: 6%;
+    text-align: center;
+}
+
+/* Status */
+th:nth-child(2) {
+    width: 14%;
+}
+
+/* Locação */
+th:nth-child(3) {
+    width: 12%;
+}
+
+/* Marca */
+th:nth-child(4) {
+    width: 12%;
+}
+
+/* Código */
+th:nth-child(5) {
+    width: 40%;
+}
+
+/* Nome */
+th:nth-child(6) {
+    width: 16%;
+}
+
+/* GTIN */
+
+
+tbody tr {
+    border-bottom: 1px solid #e8e8e8;
+    transition: background 0.15s;
+    cursor: pointer;
+}
+
+tbody tr:last-child {
+    border-bottom: none;
+}
+
+tbody tr:hover {
+    background: #f9f7f4;
+}
+
+tbody tr.conferido {
+    background: #edf7f0;
+}
+
+tbody tr.conferido td {
+    color: #2d7a4a;
+}
+
+td {
+    font-size: 12px;
+    padding: 10px 12px;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+td.col-status {
+    text-align: center;
+}
+
+td.col-qtd {
+    text-align: center;
+    font-weight: 600;
+}
+
+td.col-codigo {
+    font-weight: 600;
+}
+
+.quadrado {
+    width: 22px;
+    height: 22px;
+    border: 2px solid #ccc;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: bold;
+    transition: all 0.2s;
+    background: #fff;
+}
+
+.quadrado.ok {
+    background: #2d7a4a;
+    border-color: #2d7a4a;
+    color: #fff;
+}
+
+.estado-vazio {
+    padding: 48px 24px;
+    text-align: center;
+    font-size: 12px;
+    color: #aaa;
+    letter-spacing: 0.06em;
+}
+
+.legenda {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 12px;
+}
+
+#info-arquivo {
+    display: none;
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 10px;
+}
+
+/* ===== MODAL ===== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.modal-overlay.aberto {
+    display: flex;
+    animation: fadeIn 0.18s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.modal {
+    background: #fff;
+    border: 2px solid #1a1a1a;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 480px;
+    font-family: 'IBM Plex Mono', monospace;
+    animation: slideUp 0.2s ease;
+    overflow: hidden;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Cabeçalho: DATA HORA */
+.modal-header {
+    background: #CC0000;
+    color: #fff;
+    padding: 10px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header-titulo {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.modal-header-datetime {
+    font-size: 11px;
+    opacity: 0.9;
+}
+
+.modal-fechar {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 0 0 12px;
+    opacity: 0.8;
+}
+
+.modal-fechar:hover {
+    opacity: 1;
+}
+
+/* Grade de campos inspirada no desenho */
+.modal-body {
+    padding: 0;
+}
+
+.modal-row {
+    display: grid;
+    border-bottom: 1.5px solid #e8e8e8;
+}
+
+.modal-row:last-child {
+    border-bottom: none;
+}
+
+/* LOC + MARCA */
+.modal-row.row-loc-marca {
+    grid-template-columns: 1fr 1fr;
+}
+
+/* COD + NOME */
+.modal-row.row-cod-nome {
+    grid-template-columns: 1fr;
+}
+
+/* FOTO */
+.modal-row.row-marca-foto {
+    grid-template-columns: 1fr 1fr;
+}
+
+/* GTIN ANTIGO / NOVO */
+.modal-row.row-gtin {
+    grid-template-columns: 1fr;
+}
+
+/* QTDO */
+.modal-row.row-qtdo {
+    grid-template-columns: 1fr;
+}
+
+.modal-cell {
+    padding: 10px 14px;
+    border-right: 1.5px solid #e8e8e8;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.modal-cell:last-child {
+    border-right: none;
+}
+
+.modal-cell-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #888;
+}
+
+.modal-cell-label.riscado {
+    text-decoration: line-through;
+    color: #bbb;
+}
+
+.modal-cell-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1a1a1a;
+    word-break: break-word;
+    white-space: normal;
+}
+
+.modal-cell-input {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1a1a1a;
+    border: none;
+    outline: none;
+    background: transparent;
+    width: 100%;
+    padding: 0;
+}
+
+.modal-cell-input:focus {
+    border-bottom: 1.5px solid #00009C;
+}
+
+/* Área de foto */
+.foto-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 14px;
+    cursor: pointer;
+    position: relative;
+}
+
+.foto-area input[type=file] {
+    display: none;
+}
+
+.foto-placeholder {
+    width: 80px;
+    height: 60px;
+    border: 2px dashed #ccc;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: #ccc;
+    background: #fafafa;
+    transition: border-color 0.2s;
+    overflow: hidden;
+}
+
+.foto-area:hover .foto-placeholder {
+    border-color: #00009C;
+}
+
+.foto-placeholder img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.foto-label {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #888;
+}
+
+/* Linha inferior: BEST MARCA + FOTO */
+.modal-footer-info {
+    background: #f7f5f2;
+    border-top: 1.5px solid #e8e8e8;
+    padding: 8px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    color: #aaa;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* Botões do modal */
+.modal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: 2px solid #1a1a1a;
+}
+
+.modal-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 14px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.modal-btn-cancelar {
+    background: #fff;
+    color: #1a1a1a;
+    border-right: 1px solid #e8e8e8;
+}
+
+.modal-btn-cancelar:hover {
+    background: #f0ede8;
+}
+
+.modal-btn-confirmar {
+    background: #00009C;
+    color: #fff;
+}
+
+.modal-btn-confirmar:hover {
+    background: #0000c8;
+}
+
+.modal-btn-confirmar.ja-conferido {
+    background: #CC0000;
+}
+
+.modal-btn-confirmar.ja-conferido:hover {
+    background: #ee0000;
+}
+
+/*  FIM MODAL */
+
+/* ── Destaque de locação (1º clique) ── */
+tbody tr.loc-destaque {
+    background: #eef0ff !important;
+    border-left: 3px solid #00009C;
+}
+
+tbody tr.loc-destaque td {
+    color: #00009C;
+}
+
+tbody tr.loc-destaque.conferido {
+    background: #d8f0e2 !important;
+    border-left-color: #2d7a4a;
+}
+
+tbody tr.loc-destaque.conferido td {
+    color: #2d7a4a;
+}
+
+@media (max-width: 700px) {
+    body {
+        padding: 12px 8px;
+    }
+
+    h1 {
+        font-size: 1.1rem;
+        letter-spacing: 0.06em;
+    }
+
+    .linha-botoes {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .botao {
+        width: 100%;
+        min-width: unset;
+        font-size: 13px;
+        padding: 12px;
+    }
+
+  .grupo-busca {
+    display: flex;
+    flex-direction: column; /* Faz os itens ficarem um em cima do outro */
+    gap: 10px;             /* Dá um espaço entre o select e o input */
+  }
+
+  #filtro-tipo {
+    flex: none !important; /* Força a ignorar o '0 0 130px' do desktop */
+    width: 100% !important; 
+    height: 45px !important; /* Ajuste para uma altura confortável para o dedo */
+  }
+
+  #busca {
+    width: 100% !important;
+  }
+
+    .barra-busca {
+        height: 44px;
+        flex: unset;
+        width: 100%;
+        margin-bottom: 0 !important;
+    }
+
+    .contador {
+        font-size: 13px;
+    }
+
+    /* Tabela no celular: layout de card */
+    thead {
+        display: none;
+    }
+
+    tbody tr {
+        display: grid;
+        grid-template-columns: 36px 1fr auto;
+        grid-template-rows: auto auto auto;
+        grid-template-areas:
+            "status locacao locacao"
+            "status nome    nome"
+            "status codigo  gtin";
+        padding: 12px 8px;
+        border-bottom: 2px solid #e8e8e8;
+        gap: 2px 8px;
+        align-items: center;
+    }
+
+    td {
+        display: block;
+        padding: 1px 0 !important;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
+        border: none !important;
+    }
+
+    td.col-status {
+        grid-area: status;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    td.col-locacao {
+        grid-area: locacao;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    td.col-nome {
+        grid-area: nome;
+        font-weight: 700;
+        font-size: 14px;
+        color: #1a1a1a;
+        text-align:right ;
+    }
+
+    td.col-codigo {
+        grid-area: nome;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    td.col-gtin {
+        grid-area: locacao;
+        font-size: 14px;
+ 
+        text-align: right;
+    }
+
+    /* Oculta marca no celular (fica no modal) */
+    td.col-marca {
+        display: none;
+    }
+
+    /* ── MODAL CENTRALIZADO NO CELULAR ── */
+    .modal-overlay {
+        padding: 16px;
+        align-items: center !important;
+    }
+
+    .modal-overlay.aberto {
+        align-items: center !important;
+        padding: 16px;
+    }
+
+    .modal {
+        max-width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        border-radius: 12px;
+        position: relative;
+        top: unset;
+        left: unset;
+        right: unset;
+        margin: 0 auto;
+    }
+
+    .modal-row.row-loc-marca {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-cell {
+        border-right: none !important;
+        border-bottom: 1px solid #e8e8e8;
+    }
+
+    .modal-cell:last-child {
+        border-bottom: none;
+    }
+
+    .foto-placeholder {
+        width: 100px;
+        height: 75px;
+    }
+}
+
+.grupo-busca {
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
@@ -617,7 +715,7 @@
 
 /* Ajuste do Select para combinar com os inputs */
 #filtro-tipo {
-    height: 42px; /* Mesma altura da barra de busca */
+    height: 42px !important;
     padding: 0 12px;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 12px;
@@ -626,8 +724,10 @@
     background: #fff;
     cursor: pointer;
     outline: none;
-    flex: 0 0 130px; /* Largura fixa para não esmagar */
-    appearance: none; /* Remove seta padrão em alguns browsers */
+    flex: 0 0 130px;
+    /* Largura fixa para não esmagar */
+    appearance: none;
+    /* Remove seta padrão em alguns browsers */
     background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://w3.org' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
     background-repeat: no-repeat;
     background-position: right 8px center;
@@ -641,6 +741,8 @@
 /* Ajuste na barra de busca para não ter margem lateral */
 .barra-busca {
     height: 42px;
-    margin-bottom: 0 !important; /* Remove a margem antiga */
-    flex: 1; /* Faz a barra ocupar o resto do espaço */
+    margin-bottom: 0 !important;
+    /* Remove a margem antiga */
+    flex: 1;
+    /* Faz a barra ocupar o resto do espaço */
 }
