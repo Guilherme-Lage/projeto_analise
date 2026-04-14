@@ -3,7 +3,7 @@ let ocultar = true;
 let idxModalAtual = -1;
 let ultimaLocacaoClicada = "";
 let ocultarAlertas = false; 
-
+let contextoAnterior = null; // { tipo, valor } — para voltar após confirmar'
 //  MODAL 
 function abrirModal(globalIdx) {
     try {
@@ -152,14 +152,19 @@ function confirmarModal() {
     localStorage.setItem('estoque_hontec_backup', JSON.stringify(itens));
 
     // --- MUDANÇAS PARA LIMPAR A PESQUISA ---
-    document.getElementById('busca').value = "";           // Limpa o texto digitado
-    document.getElementById('filtro-tipo').value = "todos"; // Volta o seletor para Tudo
-    ultimaLocacaoClicada = "";                             // Reseta o controle de clique/filtro
+ // Volta ao contexto anterior (ex: busca de prateleira) ou lista completa
+    ultimaLocacaoClicada = "";
 
-    // Redesenha a tabela completa e atualiza o progresso
-    renderizarTabela(itens);
+    if (contextoAnterior) {
+        document.getElementById('filtro-tipo').value = contextoAnterior.tipo;
+        document.getElementById('busca').value = contextoAnterior.valor;
+        filtrar();
+    } else {
+        document.getElementById('busca').value = "";
+        document.getElementById('filtro-tipo').value = "todos";
+        renderizarTabela(itens);
+    }
     atualizarContador();
-    
     fecharModal();
 }
 
@@ -406,6 +411,7 @@ function filtrar() {
     // Se limpar a busca, resetamos o rastreio de locação clicada
     if (busca === '') {
         ultimaLocacaoClicada = ""; 
+        contextoAnterior = null;
         renderizarTabela(itens);
         return;
     }
@@ -415,7 +421,7 @@ function filtrar() {
         const cod   = (i.codigo || '').toLowerCase();
         const nome  = (i.nome || '').toLowerCase();
         const marca = (i.marca || '').toLowerCase();
-        // Busca tanto no original quanto no novo digitado
+         if (tipo === 'prateleira') return loc.includes(busca);
         const gtin  = (i.gtinOriginal || '').toLowerCase() + (i.gtinNovo || '').toLowerCase();
 
         if (tipo === 'locacao') return loc.includes(busca);
@@ -496,32 +502,40 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') fecharModal();
 });
 
-
 function gerenciarCliqueItem(globalIdx) {
     const item = itens[globalIdx];
     const campoBusca = document.getElementById('busca');
     const seletorFiltro = document.getElementById('filtro-tipo');
 
     if (ultimaLocacaoClicada !== item.locacao) {
-        ultimaLocacaoClicada = item.locacao;
+        // 1º clique: salva contexto atual ANTES de mudar, depois filtra por locação
+        const tipoAtual = seletorFiltro.value;
+        const valorAtual = campoBusca.value.trim();
 
+        // Só salva se for busca de prateleira (para poder voltar)
+        if (tipoAtual === 'prateleira' && valorAtual !== '') {
+            contextoAnterior = { tipo: tipoAtual, valor: valorAtual };
+        } else if (tipoAtual !== 'locacao') {
+            // qualquer outra busca ativa: salva também
+            contextoAnterior = valorAtual !== '' ? { tipo: tipoAtual, valor: valorAtual } : null;
+        }
+
+        ultimaLocacaoClicada = item.locacao;
         seletorFiltro.value = "locacao";
         campoBusca.value = item.locacao;
-
-        filtrar(); 
-    }
-  
-    else {
+        filtrar();
+    } else {
+        // 2º clique: abre modal
         abrirModal(globalIdx);
     }
 }
-
 function voltarListaCompleta() {
     document.getElementById('busca').value = "";
     document.getElementById('filtro-tipo').value = "todos";
-    ultimaLocacaoClicada = ""; 
+    ultimaLocacaoClicada = "";
+    contextoAnterior = null;
     renderizarTabela(itens);
-}
+}   
 
 function alternarAlertas() {
     ocultarAlertas = !ocultarAlertas;
@@ -534,3 +548,13 @@ function alternarAlertas() {
 
     renderizarTabela(itens);
 }
+const inputGtin = document.getElementById('gtin'); // Use o ID real do seu campo GTIN
+const inputQuantidade = document.getElementById('quantidade'); // Use o ID real do campo Qtd
+
+inputGtin.addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        e.preventDefault(); // Impede que o Enter envie o formulário antes da hora
+        inputQuantidade.focus();
+        inputQuantidade.select(); // Opcional: já seleciona o texto para facilitar a edição
+    }
+});
