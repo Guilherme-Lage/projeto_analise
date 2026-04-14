@@ -1,7 +1,7 @@
 let itens = [];
 let ocultar = false;
 let idxModalAtual = -1;
-
+let ultimaLocacaoClicada = "";
 //  MODAL 
 function abrirModal(globalIdx) {
     try {
@@ -82,8 +82,7 @@ function carregarFoto(input) {
         if (idxModalAtual >= 0) itens[idxModalAtual].foto = src;
     };
     reader.readAsDataURL(input.files[0]);
-}
-function confirmarModal() {
+}function confirmarModal() {
     if (idxModalAtual < 0) return;
     const item = itens[idxModalAtual];
 
@@ -104,13 +103,21 @@ function confirmarModal() {
 
     item.conferido = !item.conferido;
 
+    // Persistência no navegador
     localStorage.setItem('estoque_hontec_backup', JSON.stringify(itens));
 
-    // REDESENHA A TABELA (Isso força a locação nova a aparecer)
+    // --- MUDANÇAS PARA LIMPAR A PESQUISA ---
+    document.getElementById('busca').value = "";           // Limpa o texto digitado
+    document.getElementById('filtro-tipo').value = "todos"; // Volta o seletor para Tudo
+    ultimaLocacaoClicada = "";                             // Reseta o controle de clique/filtro
+
+    // Redesenha a tabela completa e atualiza o progresso
     renderizarTabela(itens);
     atualizarContador();
+    
     fecharModal();
 }
+
 
 
 
@@ -141,7 +148,7 @@ function parseLinhaCsv(linha, sep) {
     for (let i = 0; i < linha.length; i++) {
         const c = linha[i];
         if (c === '"') {
-            if (dentroAspas && linha[i+1] === '"') { campo += '"'; i++; }
+            if (dentroAspas && linha[i + 1] === '"') { campo += '"'; i++; }
             else dentroAspas = !dentroAspas;
         } else if (c === sep && !dentroAspas) {
             resultado.push(campo.trim());
@@ -164,7 +171,7 @@ function splitLinhasCSV(texto) {
         if (c === '"') {
             dentroAspas = !dentroAspas;
             atual += c;
-        } else if ((c === '\n' || (c === '\r' && texto[i+1] === '\n')) && !dentroAspas) {
+        } else if ((c === '\n' || (c === '\r' && texto[i + 1] === '\n')) && !dentroAspas) {
             if (c === '\r') i++;
             if (atual.trim()) linhas.push(atual);
             atual = '';
@@ -187,15 +194,15 @@ function processarCSV(texto, nomeArquivo) {
         const cabecalho = parseLinhaCsv(linhas[0], sep).map(v => v.toUpperCase().trim());
         const idx = (nome) => cabecalho.findIndex(c => c.includes(nome.toUpperCase()));
 
-        const iCodigo     = idx('ITEM_ESTOQUE_PUB');
-        const iNome       = idx('DES_ITEM_ESTOQUE');
-        const iQtd        = idx('QTD_CONTABIL');
-        const iZona       = idx('LOCACAO_ZONA');
-        const iRua        = idx('LOCACAO_RUA');
-        const iEstante    = idx('LOCACAO_ESTANTE');
+        const iCodigo = idx('ITEM_ESTOQUE_PUB');
+        const iNome = idx('DES_ITEM_ESTOQUE');
+        const iQtd = idx('QTD_CONTABIL');
+        const iZona = idx('LOCACAO_ZONA');
+        const iRua = idx('LOCACAO_RUA');
+        const iEstante = idx('LOCACAO_ESTANTE');
         const iPrateleira = idx('LOCACAO_PRATELEIRA');
-        const iNumero     = idx('LOCACAO_NUMERO');
-        const iMarcaCSV   = idx('MARCA');
+        const iNumero = idx('LOCACAO_NUMERO');
+        const iMarcaCSV = idx('MARCA');
         // Aceita COD_EAN_GTIN ou GTIN
         let iGtin = idx('COD_EAN_GTIN');
         if (iGtin < 0) iGtin = idx('GTIN');
@@ -208,19 +215,19 @@ function processarCSV(texto, nomeArquivo) {
             const cols = parseLinhaCsv(linhas[i], sep);
             if (cols.length < 2) continue;
 
-            const zona  = iZona >= 0       ? cols[iZona]       : '';
-            const rua   = iRua >= 0        ? cols[iRua]        : '';
-            const est   = iEstante >= 0    ? cols[iEstante]    : '';
-            const prat  = iPrateleira >= 0 ? cols[iPrateleira] : '';
-            const num   = iNumero >= 0     ? cols[iNumero]     : '';
+            const zona = iZona >= 0 ? cols[iZona] : '';
+            const rua = iRua >= 0 ? cols[iRua] : '';
+            const est = iEstante >= 0 ? cols[iEstante] : '';
+            const prat = iPrateleira >= 0 ? cols[iPrateleira] : '';
+            const num = iNumero >= 0 ? cols[iNumero] : '';
 
             const locacao = [zona, rua, est, prat, num].filter(Boolean).join('.');
-            const codigo  = iCodigo >= 0    ? cols[iCodigo]    : `item-${i}`;
-            const nome    = iNome >= 0      ? cols[iNome]      : '---';
-            const gtin    = iGtin >= 0      ? cols[iGtin]      : '---';
-            const marcaCSV= iMarcaCSV >= 0  ? cols[iMarcaCSV]  : '';
-            const qtdRaw  = (iQtd >= 0 && cols[iQtd] != null) ? cols[iQtd] : '0';
-            const qtd     = parseFloat(qtdRaw.replace(',', '.')) || 0;
+            const codigo = iCodigo >= 0 ? cols[iCodigo] : `item-${i}`;
+            const nome = iNome >= 0 ? cols[iNome] : '---';
+            const gtin = iGtin >= 0 ? cols[iGtin] : '---';
+            const marcaCSV = iMarcaCSV >= 0 ? cols[iMarcaCSV] : '';
+            const qtdRaw = (iQtd >= 0 && cols[iQtd] != null) ? cols[iQtd] : '0';
+            const qtd = parseFloat(qtdRaw.replace(',', '.')) || 0;
 
             if (!codigo) continue;
 
@@ -283,8 +290,7 @@ function renderizarTabela(lista) {
         if (ocultar && item.conferido && !buscaAtiva) {
             tr.style.display = 'none';
         }
-
-        tr.onclick = () => abrirModal(globalIdx);
+        tr.onclick = () => gerenciarCliqueItem(globalIdx);
 
         // ATENÇÃO NA ORDEM: Status | Locação | Marca | Código | Nome | GTIN (Original ou Novo)
         // Usamos item.gtinNovo || item.gtinAntigo para mostrar o novo se existir
@@ -324,31 +330,33 @@ function atualizarContador() {
     }
 }
 
-
 function filtrar() {
-    const busca = document.getElementById('busca').value.toLowerCase().trim();
+    const buscaRaw = document.getElementById('busca').value.trim();
+    const busca = buscaRaw.toLowerCase();
     const tipo = document.getElementById('filtro-tipo').value;
 
+    // Se limpar a busca, resetamos o rastreio de locação clicada
     if (busca === '') {
+        ultimaLocacaoClicada = ""; 
         renderizarTabela(itens);
         return;
     }
 
     const filtrados = itens.filter(i => {
-        const loc = (i.locacao || '').toLowerCase();
-        const cod = (i.codigo || '').toLowerCase();
-        const nome = (i.nome || '').toLowerCase();
+        const loc   = (i.locacao || '').toLowerCase();
+        const cod   = (i.codigo || '').toLowerCase();
+        const nome  = (i.nome || '').toLowerCase();
         const marca = (i.marca || '').toLowerCase();
-        const gtin = (i.gtinAntigo || '').toLowerCase() + (i.gtinNovo || '').toLowerCase();
+        // Busca tanto no original quanto no novo digitado
+        const gtin  = (i.gtinOriginal || '').toLowerCase() + (i.gtinNovo || '').toLowerCase();
 
-        // Lógica de escolha
         if (tipo === 'locacao') return loc.includes(busca);
-        if (tipo === 'codigo') return cod.includes(busca);
-        if (tipo === 'nome') return nome.includes(busca);
-        if (tipo === 'marca') return marca.includes(busca);
-        if (tipo === 'gtin') return gtin.includes(busca);
+        if (tipo === 'codigo')  return cod.includes(busca);
+        if (tipo === 'nome')    return nome.includes(busca);
+        if (tipo === 'marca')   return marca.includes(busca);
+        if (tipo === 'gtin')    return gtin.includes(busca);
 
-        // Se for "todos", mantém a busca global
+        // Busca Global
         return loc.includes(busca) || cod.includes(busca) || nome.includes(busca) || marca.includes(busca) || gtin.includes(busca);
     });
 
@@ -395,7 +403,7 @@ window.onload = () => {
                 if (elInfo) elInfo.textContent = "Dados restaurados da memória local";
             }
         }
-    } catch(e) {
+    } catch (e) {
         console.warn("Erro ao restaurar backup:", e);
         localStorage.removeItem('estoque_hontec_backup');
     }
@@ -417,3 +425,32 @@ function limpar() {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') fecharModal();
 });
+
+
+function gerenciarCliqueItem(globalIdx) {
+    const item = itens[globalIdx];
+    const campoBusca = document.getElementById('busca');
+    const seletorFiltro = document.getElementById('filtro-tipo');
+
+    // Se o usuário clicar em um item de uma locação que AINDA NÃO está filtrada
+    if (ultimaLocacaoClicada !== item.locacao) {
+        ultimaLocacaoClicada = item.locacao;
+
+        // Configura o filtro para "Locação" e faz a busca
+        seletorFiltro.value = "locacao";
+        campoBusca.value = item.locacao;
+
+        filtrar(); // Executa a busca para mostrar os vizinhos
+    }
+    // Se ele clicar de novo no item (ou em outro da mesma locação já filtrada), abre o modal
+    else {
+        abrirModal(globalIdx);
+    }
+}
+
+function voltarListaCompleta() {
+    document.getElementById('busca').value = "";
+    document.getElementById('filtro-tipo').value = "todos";
+    ultimaLocacaoClicada = ""; 
+    renderizarTabela(itens);
+}

@@ -748,7 +748,6 @@ tbody tr.loc-destaque.conferido td {
 .barra-busca {
     height: 42px;
     margin-bottom: 0 !important;
-    /* Remove a margem antiga */
+    width: 100%;
     flex: 1;
-    /* Faz a barra ocupar o resto do espaço */
 }

@@ -30,11 +30,15 @@
                 <option value="locacao">LOCAÇÃO</option>
                 <option value="marca">MARCA</option>
                 <option value="codigo">CÓDIGO</option>
-                <option value="nome">NOME</option>
             </select>
 
-            <input type="text" class="barra-busca" id="busca" placeholder="BUSCAR POR CÓDIGO, NOME OU LOCAÇÃO..."
-                oninput="filtrar()">
+            <div style="position: relative; flex: 1; display: flex; align-items: center;width: 100%;">
+                <input type="text" class="barra-busca" id="busca" placeholder="BUSCAR..." oninput="filtrar()"
+                    style="padding-right: 35px;">
+                <!-- Botão de Voltar/Limpar -->
+                <button onclick="voltarListaCompleta()"
+                    style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 16px; color: #888;">✕</button>
+            </div>
         </div>
         <div class="contador" id="contador">
             <span id="cnt-conf">0</span> / <span id="cnt-total">0</span> itens conferidos
