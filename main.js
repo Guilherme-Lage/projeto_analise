@@ -34,9 +34,8 @@ function abrirModal(globalIdx) {
         const elQtd = document.getElementById('modal-qtdo');
         if (elQtd) elQtd.value = item.qtdConferida != null ? item.qtdConferida : '';
 
-        // 7. Foto
-        const ph = document.getElementById('foto-placeholder');
-        ph.innerHTML = item.foto ? `<img src="${item.foto}" alt="foto">` : '📷';
+        // 7. Fotos — renderiza galeria
+        renderizarGaleria(item.fotos || []);
 
         // 8. Botão Confirmar
         const btnConf = document.getElementById('modal-btn-confirmar');
@@ -67,8 +66,9 @@ function abrirModal(globalIdx) {
 
 function fecharModal() {
     document.getElementById('modal-overlay').classList.remove('aberto');
-    // Limpa foto
-    document.getElementById('foto-input').value = '';
+    // Limpa input de foto
+    const fi = document.getElementById('foto-input');
+    if (fi) fi.value = '';
     idxModalAtual = -1;
 }
 
@@ -76,15 +76,56 @@ function fecharModalFora(e) {
     if (e.target === document.getElementById('modal-overlay')) fecharModal();
 }
 
-function carregarFoto(input) {
-    if (!input.files[0]) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const src = e.target.result;
-        document.getElementById('foto-placeholder').innerHTML = `<img src="${src}" alt="foto">`;
-        if (idxModalAtual >= 0) itens[idxModalAtual].foto = src;
-    };
-    reader.readAsDataURL(input.files[0]);
+function renderizarGaleria(fotos) {
+    const galeria = document.getElementById('galeria-fotos');
+    if (!galeria) return;
+
+    if (!fotos || fotos.length === 0) {
+        galeria.innerHTML = '<span class="galeria-vazia">📷 Nenhuma foto</span>';
+        return;
+    }
+
+    galeria.innerHTML = fotos.map((src, i) => `
+        <div class="foto-thumb" title="Clique para remover">
+            <img src="${src}" alt="foto ${i+1}" onclick="removerFoto(${i})">
+            <button class="foto-remover" onclick="removerFoto(${i})">✕</button>
+        </div>
+    `).join('');
+}
+
+function removerFoto(idx) {
+    if (idxModalAtual < 0) return;
+    const item = itens[idxModalAtual];
+    if (!item.fotos) return;
+    item.fotos.splice(idx, 1);
+    renderizarGaleria(item.fotos);
+    localStorage.setItem('estoque_hontec_backup', JSON.stringify(itens));
+}
+
+function carregarFotos(input) {
+    if (!input.files || input.files.length === 0) return;
+    if (idxModalAtual < 0) return;
+
+    const item = itens[idxModalAtual];
+    if (!item.fotos) item.fotos = [];
+
+    const arquivos = Array.from(input.files);
+    let lidos = 0;
+
+    arquivos.forEach(arquivo => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            item.fotos.push(e.target.result);
+            lidos++;
+            if (lidos === arquivos.length) {
+                renderizarGaleria(item.fotos);
+                localStorage.setItem('estoque_hontec_backup', JSON.stringify(itens));
+            }
+        };
+        reader.readAsDataURL(arquivo);
+    });
+
+    input.value = ''; // Permite selecionar as mesmas fotos novamente
 }
 function confirmarModal() {
     if (idxModalAtual < 0) return;
@@ -245,7 +286,7 @@ function processarCSV(texto, nomeArquivo) {
                 marca: marcaCSV.toUpperCase(),
                 gtinNovo: '',
                 qtdConferida: null,
-                foto: null
+                fotos: []
             });
         }
 
@@ -405,10 +446,12 @@ function alternarConferidos() {
 function exportarCSV() {
     if (itens.length === 0) { alert('Carregue um arquivo primeiro!'); return; }
 
-    const linhas = ['STATUS|MARCA|CODIGO|NOME|QUANTIDADE|QTD_CONFERIDA|GTIN_ANTIGO|GTIN_NOVO|LOCACAO'];
+    const linhas = ['STATUS|MARCA|CODIGO|NOME|QUANTIDADE|QTD_CONFERIDA|GTIN_ANTIGO|GTIN_NOVO|LOCACAO|QTD_FOTOS|FOTOS'];
     itens.forEach(i => {
         const qtdC = i.qtdConferida != null ? i.qtdConferida : '';
-        linhas.push(`${i.conferido ? 'OK' : 'PENDENTE'}|${i.marca}|${i.codigo}|${i.nome}|${i.qtd}|${qtdC}|${i.gtinAntigo}|${i.gtinNovo}|${i.locacao}`);
+        const fotos = (i.fotos && i.fotos.length > 0) ? i.fotos.join(';;') : '';
+        const qtdFotos = i.fotos ? i.fotos.length : 0;
+        linhas.push(`${i.conferido ? 'OK' : 'PENDENTE'}|${i.marca}|${i.codigo}|${i.nome}|${i.qtd}|${qtdC}|${i.gtinAntigo || ''}|${i.gtinNovo || ''}|${i.locacao}|${qtdFotos}|${fotos}`);
     });
 
     const blob = new Blob([linhas.join('\n')], { type: 'text/plain;charset=utf-8' });

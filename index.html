@@ -128,11 +128,13 @@
 
             </div>
 
-            <div class="modal-row row-marca-foto">
-                <div class="foto-area" onclick="document.getElementById('foto-input').click()">
-                    <div class="foto-placeholder" id="foto-placeholder">📷</div>
-                    <span class="foto-label">Foto</span>
-                    <input type="file" id="foto-input" accept="image/*" onchange="carregarFoto(this)">
+            <!-- GALERIA DE FOTOS (múltiplas) -->
+            <div class="modal-row row-fotos">
+                <div class="modal-cell fotos-cell">
+                    <span class="modal-cell-label">Fotos</span>
+                    <div class="galeria-fotos" id="galeria-fotos"></div>
+                    <button class="btn-adicionar-foto" onclick="document.getElementById('foto-input').click()">+ Adicionar Foto</button>
+                    <input type="file" id="foto-input" accept="image/*" multiple onchange="carregarFotos(this)" style="display:none">
                 </div>
             </div>
 
