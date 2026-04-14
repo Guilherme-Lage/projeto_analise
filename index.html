@@ -18,6 +18,7 @@
         <div class="linha-botoes">
             <button class="botao" onclick="document.getElementById('entrada-arquivo').click()">Abrir Arquivo</button>
             <button class="botao" id="btn-ocultar" onclick="alternarConferidos()">Ocultar Conferidos</button>
+              <button class="botao" id="btn-ocultar-alertas" onclick="alternarAlertas()">Ocultar Alertas (!)</button>
             <button class="botao" onclick="exportarCSV()">⬇ Exportar</button>
             <button class="botao" id="btn-limpar" onclick="limpar()" style="display:none">Novo</button>
         </div>
@@ -35,7 +36,6 @@
             <div style="position: relative; flex: 1; display: flex; align-items: center;width: 100%;">
                 <input type="text" class="barra-busca" id="busca" placeholder="BUSCAR..." oninput="filtrar()"
                     style="padding-right: 35px;">
-                <!-- Botão de Voltar/Limpar -->
                 <button onclick="voltarListaCompleta()"
                     style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 16px; color: #888;">✕</button>
             </div>

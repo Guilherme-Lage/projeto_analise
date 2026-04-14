@@ -2,6 +2,8 @@ let itens = [];
 let ocultar = false;
 let idxModalAtual = -1;
 let ultimaLocacaoClicada = "";
+let ocultarAlertas = false; 
+
 //  MODAL 
 function abrirModal(globalIdx) {
     try {
@@ -267,8 +269,6 @@ function processarCSV(texto, nomeArquivo) {
         alert("Erro ao ler o arquivo: " + erro.message);
     }
 }
-
-
 function renderizarTabela(lista) {
     const corpo = document.getElementById('corpo');
     corpo.innerHTML = '';
@@ -278,39 +278,64 @@ function renderizarTabela(lista) {
         return;
     }
 
+    // Identifica locações que têm pelo menos um item conferido (Gera o Alerta)
+    const locacoesComConferidos = [...new Set(
+        itens.filter(i => i.conferido).map(i => i.locacao)
+    )];
+
     lista.forEach((item) => {
         const globalIdx = itens.indexOf(item);
         const tr = document.createElement('tr');
         tr.id = `linha-${globalIdx}`;
 
-        if (item.conferido) tr.classList.add('conferido');
+        let classeQuadrado = "";
+        let iconeStatus = "";
+        let statusAlerta = false;
 
-        // Se houver busca, ignora o "ocultar" para mostrar o resultado
-        const buscaAtiva = document.getElementById('busca').value.trim() !== '';
-        if (ocultar && item.conferido && !buscaAtiva) {
-            tr.style.display = 'none';
+        if (item.conferido) {
+            tr.classList.add('conferido');
+            classeQuadrado = "ok";
+            iconeStatus = "✓";
+        } else if (locacoesComConferidos.includes(item.locacao)) {
+            tr.classList.add('em-alerta');
+            classeQuadrado = "status-pendente";
+            iconeStatus = "!";
+            statusAlerta = true;
         }
+
+        // --- LÓGICA DE OCULTAR ---
+        const buscaAtiva = document.getElementById('busca').value.trim() !== '';
+        
+        // Se NÃO houver busca, aplicamos os filtros de ocultar
+        if (!buscaAtiva) {
+            if (ocultar && item.conferido) {
+                tr.style.display = 'none';
+            }
+            if (ocultarAlertas && statusAlerta && !item.conferido) {
+                tr.style.display = 'none';
+            }
+        }
+
         tr.onclick = () => gerenciarCliqueItem(globalIdx);
 
-        // ATENÇÃO NA ORDEM: Status | Locação | Marca | Código | Nome | GTIN (Original ou Novo)
-        // Usamos item.gtinNovo || item.gtinAntigo para mostrar o novo se existir
         tr.innerHTML = `
-    <td class="col-status">
-        <div class="quadrado ${item.conferido ? 'ok' : ''}" id="q-${globalIdx}">
-            ${item.conferido ? '✓' : ''}
-        </div>
-    </td>
-    <td class="col-locacao">${item.locacao || '---'}</td> <!-- TEM QUE SER ASSIM -->
-    <td class="col-marca">${item.marca || '---'}</td> 
-    <td class="col-codigo">${item.codigo}</td>
-    <td class="col-nome">${item.nome}</td>
-    <td class="col-gtin">${item.gtinNovo || item.gtinAntigo || '---'}</td>
-`;
+            <td class="col-status">
+                <div class="quadrado ${classeQuadrado}" id="q-${globalIdx}">
+                    ${iconeStatus}
+                </div>
+            </td>
+            <td class="col-locacao">${item.locacao || '---'}</td>
+            <td class="col-marca">${item.marca || '---'}</td> 
+            <td class="col-codigo">${item.codigo}</td>
+            <td class="col-nome">${item.nome}</td>
+            <td class="col-gtin">${item.gtinNovo || item.gtinAntigo || '---'}</td>
+        `;
         corpo.appendChild(tr);
     });
 
-    atualizarContador();
+    if (typeof atualizarContador === "function") atualizarContador();
 }
+
 
 
 function atualizarContador() {
@@ -452,5 +477,17 @@ function voltarListaCompleta() {
     document.getElementById('busca').value = "";
     document.getElementById('filtro-tipo').value = "todos";
     ultimaLocacaoClicada = ""; 
+    renderizarTabela(itens);
+}
+
+function alternarAlertas() {
+    ocultarAlertas = !ocultarAlertas;
+    const btn = document.getElementById('btn-ocultar-alertas');
+    
+    // Muda o texto e destaca o botão quando ativo
+    btn.textContent = ocultarAlertas ? 'Mostrar Alertas (!)' : 'Ocultar Alertas (!)';
+    btn.style.backgroundColor = ocultarAlertas ? '#fff9c4' : '#fff';
+    btn.style.color = '#000';
+
     renderizarTabela(itens);
 }
