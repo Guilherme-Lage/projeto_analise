@@ -1,5 +1,5 @@
 let itens = [];
-let ocultar = false;
+let ocultar = true;
 let idxModalAtual = -1;
 let ultimaLocacaoClicada = "";
 let ocultarAlertas = false; 
@@ -84,7 +84,8 @@ function carregarFoto(input) {
         if (idxModalAtual >= 0) itens[idxModalAtual].foto = src;
     };
     reader.readAsDataURL(input.files[0]);
-}function confirmarModal() {
+}
+function confirmarModal() {
     if (idxModalAtual < 0) return;
     const item = itens[idxModalAtual];
 
@@ -457,17 +458,15 @@ function gerenciarCliqueItem(globalIdx) {
     const campoBusca = document.getElementById('busca');
     const seletorFiltro = document.getElementById('filtro-tipo');
 
-    // Se o usuário clicar em um item de uma locação que AINDA NÃO está filtrada
     if (ultimaLocacaoClicada !== item.locacao) {
         ultimaLocacaoClicada = item.locacao;
 
-        // Configura o filtro para "Locação" e faz a busca
         seletorFiltro.value = "locacao";
         campoBusca.value = item.locacao;
 
-        filtrar(); // Executa a busca para mostrar os vizinhos
+        filtrar(); 
     }
-    // Se ele clicar de novo no item (ou em outro da mesma locação já filtrada), abre o modal
+  
     else {
         abrirModal(globalIdx);
     }
@@ -485,7 +484,7 @@ function alternarAlertas() {
     const btn = document.getElementById('btn-ocultar-alertas');
     
     // Muda o texto e destaca o botão quando ativo
-    btn.textContent = ocultarAlertas ? 'Mostrar Alertas (!)' : 'Ocultar Alertas (!)';
+    btn.textContent = ocultarAlertas ? 'Mostrar Alertas' : 'Ocultar Alertas';
     btn.style.backgroundColor = ocultarAlertas ? '#fff9c4' : '#fff';
     btn.style.color = '#000';
 
