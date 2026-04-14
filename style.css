@@ -570,21 +570,25 @@ tbody tr.loc-destaque.conferido td {
         padding: 12px;
     }
 
-  .grupo-busca {
-    display: flex;
-    flex-direction: column; /* Faz os itens ficarem um em cima do outro */
-    gap: 10px;             /* Dá um espaço entre o select e o input */
-  }
+    .grupo-busca {
+        display: flex;
+        flex-direction: column;
+        /* Faz os itens ficarem um em cima do outro */
+        gap: 10px;
+        /* Dá um espaço entre o select e o input */
+    }
 
-  #filtro-tipo {
-    flex: none !important; /* Força a ignorar o '0 0 130px' do desktop */
-    width: 100% !important; 
-    height: 45px !important; /* Ajuste para uma altura confortável para o dedo */
-  }
+    #filtro-tipo {
+        flex: none !important;
+        /* Força a ignorar o '0 0 130px' do desktop */
+        width: 100% !important;
+        height: 45px !important;
+        /* Ajuste para uma altura confortável para o dedo */
+    }
 
-  #busca {
-    width: 100% !important;
-  }
+    #busca {
+        width: 100% !important;
+    }
 
     .barra-busca {
         height: 44px;
@@ -608,8 +612,8 @@ tbody tr.loc-destaque.conferido td {
         grid-template-rows: auto auto auto;
         grid-template-areas:
             "status locacao locacao"
-            "status nome    nome"
-            "status codigo  gtin";
+            "status codigo    nome"
+            "status vazio  nome";
         padding: 12px 8px;
         border-bottom: 2px solid #e8e8e8;
         gap: 2px 8px;
@@ -642,12 +646,14 @@ tbody tr.loc-destaque.conferido td {
         grid-area: nome;
         font-weight: 700;
         font-size: 14px;
+        white-space: normal;
         color: #1a1a1a;
-        text-align:right ;
+        text-align: right;
     }
 
     td.col-codigo {
-        grid-area: nome;
+        align-items: top;
+        grid-area: codigo;
         font-size: 14px;
         font-weight: 600;
     }
@@ -655,7 +661,7 @@ tbody tr.loc-destaque.conferido td {
     td.col-gtin {
         grid-area: locacao;
         font-size: 14px;
- 
+        font-weight: 600;
         text-align: right;
     }
 

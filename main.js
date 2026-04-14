@@ -26,7 +26,7 @@ function abrirModal(globalIdx) {
 
         // 5. GTIN Original
         const elGtinAntigo = document.getElementById('modal-gtin-antigo');
-        if (elGtinAntigo) elGtinAntigo.textContent = item.gtinOriginal || '---';
+        if (elGtinAntigo) elGtinAntigo.textContent = item.gtinAntigo || '---';
 
         // 6. Quantidade (ESTA SIM SEMPRE VEM ZERADA)
         const elQtd = document.getElementById('modal-qtdo');
@@ -229,7 +229,7 @@ function processarCSV(texto, nomeArquivo) {
                 codigo: codigo.toUpperCase(),
                 nome: nome.toUpperCase(),
                 qtd: qtd,
-                gtinOriginal: gtin.toUpperCase(),
+                gtinAntigo: gtin.toUpperCase(),
                 conferido: false,
                 marca: marcaCSV.toUpperCase(),
                 gtinNovo: '',
@@ -287,7 +287,7 @@ function renderizarTabela(lista) {
         tr.onclick = () => abrirModal(globalIdx);
 
         // ATENÇÃO NA ORDEM: Status | Locação | Marca | Código | Nome | GTIN (Original ou Novo)
-        // Usamos item.gtinNovo || item.gtinOriginal para mostrar o novo se existir
+        // Usamos item.gtinNovo || item.gtinAntigo para mostrar o novo se existir
         tr.innerHTML = `
     <td class="col-status">
         <div class="quadrado ${item.conferido ? 'ok' : ''}" id="q-${globalIdx}">
@@ -298,7 +298,7 @@ function renderizarTabela(lista) {
     <td class="col-marca">${item.marca || '---'}</td> 
     <td class="col-codigo">${item.codigo}</td>
     <td class="col-nome">${item.nome}</td>
-    <td class="col-gtin">${item.gtinNovo || item.gtinOriginal || '---'}</td>
+    <td class="col-gtin">${item.gtinNovo || item.gtinAntigo || '---'}</td>
 `;
         corpo.appendChild(tr);
     });
@@ -339,7 +339,7 @@ function filtrar() {
         const cod = (i.codigo || '').toLowerCase();
         const nome = (i.nome || '').toLowerCase();
         const marca = (i.marca || '').toLowerCase();
-        const gtin = (i.gtinOriginal || '').toLowerCase() + (i.gtinNovo || '').toLowerCase();
+        const gtin = (i.gtinAntigo || '').toLowerCase() + (i.gtinNovo || '').toLowerCase();
 
         // Lógica de escolha
         if (tipo === 'locacao') return loc.includes(busca);
