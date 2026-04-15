@@ -184,40 +184,75 @@ function carregarFotos(input) {
 
     input.value = '';
 }
-async function confirmarModal() {
-    if (idxModalAtual < 0) return;
-    const item = itens[idxModalAtual];
+let historicoLog = [];
 
-    const elLoc   = document.getElementById('modal-locacao');
-    const elMarca = document.getElementById('modal-marca');
-    const elGtinN = document.getElementById('modal-gtin-novo');
-    const elQtd   = document.getElementById('modal-qtdo');
+// Coloque esta função fora de qualquer outra
+function adicionarLog(item) {
+    const lista = document.getElementById('log-lista');
+    if (!lista) return; // Se não achar a lista, não faz nada e não trava o código
 
-    if (elLoc && elLoc.value.trim() !== "") item.locacao = elLoc.value.trim().toUpperCase();
-    if (elMarca) item.marca    = elMarca.value.trim().toUpperCase();
-    if (elGtinN) item.gtinNovo = elGtinN.value.trim().toUpperCase();
-    if (elQtd)   item.qtdConferida = elQtd.value !== '' ? parseFloat(elQtd.value) : 0;
+    const agora = new Date();
+    const hora = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-    item.conferido = !item.conferido; // toggle: confirma ou desmarca
+    const status = item.conferido ? "OK" : "VOLTOU";
+    const qtd = item.qtdConferida !== null ? `[${item.qtdConferida}]` : "";
 
-    await salvarBackup();
+    const div = document.createElement('div');
+    div.style.padding = "4px 8px";
+    div.style.borderBottom = "1px solid #eee";
+    div.innerHTML = `<b>${hora}</b> - ${status}: ${item.codigo} ${qtd}`;
 
-    // Volta ao contexto de busca anterior (ex: prateleira) ou lista completa
-    ultimaLocacaoClicada = "";
-    if (contextoAnterior) {
-        document.getElementById('filtro-tipo').value = contextoAnterior.tipo;
-        document.getElementById('busca').value = contextoAnterior.valor;
-        filtrar();
-    } else {
-        document.getElementById('busca').value = "";
-        document.getElementById('filtro-tipo').value = "todos";
-        renderizarTabela(itens);
+    lista.prepend(div);
+
+    if (lista.children.length > 5) {
+        lista.removeChild(lista.lastChild);
     }
-    atualizarContador();
-    fecharModal();
 }
 
+// Lógica do botão (coloque isso no final do arquivo ou no window.onload)
+document.addEventListener('click', function (e) {
+    if (e.target && (e.target.id === 'log-header' || e.target.parentElement.id === 'log-header')) {
+        const lista = document.getElementById('log-lista');
+        const seta = document.getElementById('log-seta');
+        if (lista.style.display === 'none') {
+            lista.style.display = 'block';
+            seta.textContent = '▲';
+        } else {
+            lista.style.display = 'none';
+            seta.textContent = '▼';
+        }
+    }
+});
 
+function renderizarLog() {
+    const lista = document.getElementById('log-lista');
+    lista.innerHTML = historicoLog.map(l => `<div class="log-item">${l.msg}</div>`).join('');
+}
+
+async function confirmarModal() {
+    try {
+        if (idxModalAtual < 0) return;
+        const item = itens[idxModalAtual];
+
+        // ... seus inputs (elLoc, elMarca, etc) ...
+        const elQtd = document.getElementById('modal-qtdo');
+        if (elQtd) item.qtdConferida = elQtd.value !== '' ? parseFloat(elQtd.value) : 0;
+
+        item.conferido = !item.conferido;
+
+        // Tenta adicionar o log, mas não deixa travar se der erro
+        try { adicionarLog(item); } catch (e) { console.log("Erro no log"); }
+
+        await salvarBackup();
+        renderizarTabela(itens);
+        atualizarContador();
+        fecharModal(); // Agora ele vai chegar aqui com certeza
+
+    } catch (erro) {
+        console.error("Erro ao confirmar:", erro);
+        fecharModal(); // Fecha mesmo se der erro crítico
+    }
+}
 //  CSV 
 
 function carregarCSV(input) {
@@ -298,15 +333,15 @@ function processarCSV(texto, nomeArquivo) {
 
         if (ehExportado) {
             // ── CSV EXPORTADO ───────────────────────────────────────────
-            const iStatus    = idx('STATUS');
-            const iMarca     = idx('MARCA');
-            const iCodigo    = idx('CODIGO');
-            const iNome      = idx('NOME');
-            const iQtd       = idx('QTD_SISTEMA');
-            const iQtdConf   = idx('QTD_CONFERIDA');
-            const iLocacao   = idx('LOCACAO');
+            const iStatus = idx('STATUS');
+            const iMarca = idx('MARCA');
+            const iCodigo = idx('CODIGO');
+            const iNome = idx('NOME');
+            const iQtd = idx('QTD_SISTEMA');
+            const iQtdConf = idx('QTD_CONFERIDA');
+            const iLocacao = idx('LOCACAO');
             const iGtinAntig = idx('GTIN_ANTIGO');
-            const iGtinNovo  = idx('GTIN_NOVO');
+            const iGtinNovo = idx('GTIN_NOVO');
 
             // Detecta colunas de fotos (FOTO_1, FOTO_2, ...)
             const fotoCols = cabecalho.reduce((acc, nome, i) => {
@@ -323,32 +358,32 @@ function processarCSV(texto, nomeArquivo) {
                 const qtdConfRaw = iQtdConf >= 0 ? cols[iQtdConf] : '';
 
                 itens.push({
-                    locacao:      (iLocacao >= 0   ? cols[iLocacao]   : '').toUpperCase(),
-                    codigo:       (iCodigo >= 0    ? cols[iCodigo]    : '').toUpperCase(),
-                    nome:         (iNome >= 0      ? cols[iNome]      : '').toUpperCase(),
-                    qtd:          parseFloat(qtdRaw.replace(',', '.')) || 0,
-                    gtinAntigo:   (iGtinAntig >= 0 ? cols[iGtinAntig] : '').toUpperCase(),
-                    gtinNovo:     (iGtinNovo >= 0  ? cols[iGtinNovo]  : '').toUpperCase(),
-                    marca:        (iMarca >= 0     ? cols[iMarca]     : '').toUpperCase(),
-                    conferido:    iStatus >= 0 && cols[iStatus].toUpperCase() === 'OK',
+                    locacao: (iLocacao >= 0 ? cols[iLocacao] : '').toUpperCase(),
+                    codigo: (iCodigo >= 0 ? cols[iCodigo] : '').toUpperCase(),
+                    nome: (iNome >= 0 ? cols[iNome] : '').toUpperCase(),
+                    qtd: parseFloat(qtdRaw.replace(',', '.')) || 0,
+                    gtinAntigo: (iGtinAntig >= 0 ? cols[iGtinAntig] : '').toUpperCase(),
+                    gtinNovo: (iGtinNovo >= 0 ? cols[iGtinNovo] : '').toUpperCase(),
+                    marca: (iMarca >= 0 ? cols[iMarca] : '').toUpperCase(),
+                    conferido: iStatus >= 0 && cols[iStatus].toUpperCase() === 'OK',
                     qtdConferida: qtdConfRaw !== '' ? parseFloat(qtdConfRaw) : null,
-                    fotos:        fotos
+                    fotos: fotos
                 });
             }
 
         } else {
             // ── CSV ORIGINAL DO SISTEMA ─────────────────────────────────
-            const iCodigo     = idx('ITEM_ESTOQUE_PUB');
-            const iNome       = idx('DES_ITEM_ESTOQUE');
-            const iQtd        = idx('QTD_CONTABIL');
-            const iZona       = idx('LOCACAO_ZONA');
-            const iRua        = idx('LOCACAO_RUA');
-            const iEstante    = idx('LOCACAO_ESTANTE');
+            const iCodigo = idx('ITEM_ESTOQUE_PUB');
+            const iNome = idx('DES_ITEM_ESTOQUE');
+            const iQtd = idx('QTD_CONTABIL');
+            const iZona = idx('LOCACAO_ZONA');
+            const iRua = idx('LOCACAO_RUA');
+            const iEstante = idx('LOCACAO_ESTANTE');
             const iPrateleira = idx('LOCACAO_PRATELEIRA');
-            const iNumero     = idx('LOCACAO_NUMERO');
-            const iMarcaCSV   = idx('MARCA');
-            let   iGtin       = idx('COD_EAN_GTIN');
-            if (iGtin < 0)    iGtin = idx('GTIN');
+            const iNumero = idx('LOCACAO_NUMERO');
+            const iMarcaCSV = idx('MARCA');
+            let iGtin = idx('COD_EAN_GTIN');
+            if (iGtin < 0) iGtin = idx('GTIN');
 
             for (let i = 1; i < linhas.length; i++) {
                 const cols = parseLinhaCsv(linhas[i], sep);
@@ -362,16 +397,16 @@ function processarCSV(texto, nomeArquivo) {
                 if (!codigo) continue;
 
                 itens.push({
-                    locacao:      locacao.toUpperCase(),
-                    codigo:       codigo.toUpperCase(),
-                    nome:         (iNome >= 0 ? cols[iNome] : '---').toUpperCase(),
-                    qtd:          parseFloat((iQtd >= 0 ? cols[iQtd] : '0').replace(',', '.')) || 0,
-                    gtinAntigo:   (iGtin >= 0 ? cols[iGtin] : '---').toUpperCase(),
-                    gtinNovo:     '',
-                    marca:        (iMarcaCSV >= 0 ? cols[iMarcaCSV] : '').toUpperCase(),
-                    conferido:    false,
+                    locacao: locacao.toUpperCase(),
+                    codigo: codigo.toUpperCase(),
+                    nome: (iNome >= 0 ? cols[iNome] : '---').toUpperCase(),
+                    qtd: parseFloat((iQtd >= 0 ? cols[iQtd] : '0').replace(',', '.')) || 0,
+                    gtinAntigo: (iGtin >= 0 ? cols[iGtin] : '---').toUpperCase(),
+                    gtinNovo: '',
+                    marca: (iMarcaCSV >= 0 ? cols[iMarcaCSV] : '').toUpperCase(),
+                    conferido: false,
                     qtdConferida: null,
-                    fotos:        []
+                    fotos: []
                 });
             }
         }
@@ -399,6 +434,7 @@ function processarCSV(texto, nomeArquivo) {
 }
 function renderizarTabela(lista) {
     const corpo = document.getElementById('corpo');
+    if (!corpo) return;
     corpo.innerHTML = '';
 
     if (lista.length === 0) {
@@ -406,8 +442,8 @@ function renderizarTabela(lista) {
         return;
     }
 
-    // Identifica locações que têm pelo menos um item conferido (Gera o Alerta)
-    const locacoesComConferidos = [...new Set(
+    // 1. Identifica locações que já tiveram pelo menos um item conferido
+    const locacoesIniciadas = [...new Set(
         itens.filter(i => i.conferido).map(i => i.locacao)
     )];
 
@@ -418,37 +454,43 @@ function renderizarTabela(lista) {
 
         let classeQuadrado = "";
         let iconeStatus = "";
-        let statusAlerta = false;
+        
+        // 2. Determina o estado do item
+        const estaConferido = item.conferido === true;
+        const ehAlerta = !estaConferido && locacoesIniciadas.includes(item.locacao);
 
-        if (item.conferido) {
+        // 3. Aplica classes visuais
+        if (estaConferido) {
             tr.classList.add('conferido');
             classeQuadrado = "ok";
             iconeStatus = "✓";
-        } else if (locacoesComConferidos.includes(item.locacao)) {
+        } else if (ehAlerta) {
             tr.classList.add('em-alerta');
             classeQuadrado = "status-pendente";
             iconeStatus = "!";
-            statusAlerta = true;
         }
 
-        // --- LÓGICA DE OCULTAR ---
+        // 4. LÓGICA DE OCULTAR (Só funciona se a busca estiver vazia)
         const buscaAtiva = document.getElementById('busca').value.trim() !== '';
-
-        // Se NÃO houver busca, aplicamos os filtros de ocultar
+        
         if (!buscaAtiva) {
-            if (ocultar && item.conferido) {
+            // Se "Ocultar Conferidos" (variável ocultar) estiver true e item estiver OK
+            if (ocultar && estaConferido) {
                 tr.style.display = 'none';
             }
-            if (ocultarAlertas && statusAlerta && !item.conferido) {
+            
+            // Se "Ocultar Alertas" (variável ocultarAlertas) estiver true e item for Alerta
+            if (ocultarAlertas && ehAlerta) {
                 tr.style.display = 'none';
             }
         }
 
+        // 5. Clique e Conteúdo
         tr.onclick = () => gerenciarCliqueItem(globalIdx);
 
         tr.innerHTML = `
             <td class="col-status">
-                <div class="quadrado ${classeQuadrado}" id="q-${globalIdx}">
+                <div class="quadrado ${classeQuadrado}">
                     ${iconeStatus}
                 </div>
             </td>
@@ -461,238 +503,246 @@ function renderizarTabela(lista) {
         corpo.appendChild(tr);
     });
 
+    // Atualiza os números no topo
     if (typeof atualizarContador === "function") atualizarContador();
 }
 
 
-
 function atualizarContador() {
-    const conf = itens.filter(i => i.conferido).length;
-    const total = itens.length;
-    document.getElementById('cnt-conf').textContent = conf;
-    document.getElementById('cnt-total').textContent = total;
+            const conf = itens.filter(i => i.conferido).length;
+            const total = itens.length;
+            document.getElementById('cnt-conf').textContent = conf;
+            document.getElementById('cnt-total').textContent = total;
 
-    const el = document.getElementById('contador');
-    if (total === 0) return;
-    if (conf === 0) {
-        el.style.background = '#fff0f0'; el.style.color = '#CC0000'; el.style.borderColor = '#CC0000';
-    } else if (conf === total) {
-        el.style.background = '#edf7f0'; el.style.color = '#2d7a4a'; el.style.borderColor = '#2d7a4a';
-    } else {
-        el.style.background = '#fff9eb'; el.style.color = '#f39c12'; el.style.borderColor = '#f39c12';
-    }
-}
+            const el = document.getElementById('contador');
+            if (total === 0) return;
+            if (conf === 0) {
+                el.style.background = '#fff0f0'; el.style.color = '#CC0000'; el.style.borderColor = '#CC0000';
+            } else if (conf === total) {
+                el.style.background = '#edf7f0'; el.style.color = '#2d7a4a'; el.style.borderColor = '#2d7a4a';
+            } else {
+                el.style.background = '#fff9eb'; el.style.color = '#f39c12'; el.style.borderColor = '#f39c12';
+            }
+        }
 
 function filtrar() {
-    const buscaRaw = document.getElementById('busca').value.trim();
-    const busca = buscaRaw.toLowerCase();
-    const tipo = document.getElementById('filtro-tipo').value;
+            const buscaRaw = document.getElementById('busca').value.trim();
+            const busca = buscaRaw.toLowerCase();
+            const tipo = document.getElementById('filtro-tipo').value;
 
-    // Se limpar a busca, resetamos o rastreio de locação clicada
-    if (busca === '') {
-        ultimaLocacaoClicada = "";
-        contextoAnterior = null;
-        renderizarTabela(itens);
-        return;
-    }
+            // Se limpar a busca, resetamos o rastreio de locação clicada
+            if (busca === '') {
+                ultimaLocacaoClicada = "";
+                contextoAnterior = null;
+                renderizarTabela(itens);
+                return;
+            }
 
-    const filtrados = itens.filter(i => {
-        const loc = (i.locacao || '').toLowerCase();
-        const cod = (i.codigo || '').toLowerCase();
-        const nome = (i.nome || '').toLowerCase();
-        const marca = (i.marca || '').toLowerCase();
-        if (tipo === 'prateleira') return loc.includes(busca);
-        const gtin = (i.gtinOriginal || '').toLowerCase() + (i.gtinNovo || '').toLowerCase();
+            const filtrados = itens.filter(i => {
+                const loc = (i.locacao || '').toLowerCase();
+                const cod = (i.codigo || '').toLowerCase();
+                const nome = (i.nome || '').toLowerCase();
+                const marca = (i.marca || '').toLowerCase();
+                if (tipo === 'prateleira') return loc.includes(busca);
+                const gtin = (i.gtinOriginal || '').toLowerCase() + (i.gtinNovo || '').toLowerCase();
 
-        if (tipo === 'locacao') return loc.includes(busca);
-        if (tipo === 'codigo') return cod.includes(busca);
-        if (tipo === 'nome') return nome.includes(busca);
-        if (tipo === 'marca') return marca.includes(busca);
-        if (tipo === 'gtin') return gtin.includes(busca);
+                if (tipo === 'locacao') return loc.includes(busca);
+                if (tipo === 'codigo') return cod.includes(busca);
+                if (tipo === 'nome') return nome.includes(busca);
+                if (tipo === 'marca') return marca.includes(busca);
+                if (tipo === 'gtin') return gtin.includes(busca);
 
-        // Busca Global
-        return loc.includes(busca) || cod.includes(busca) || nome.includes(busca) || marca.includes(busca) || gtin.includes(busca);
-    });
+                // Busca Global
+                return loc.includes(busca) || cod.includes(busca) || nome.includes(busca) || marca.includes(busca) || gtin.includes(busca);
+            });
 
-    renderizarTabela(filtrados);
-}
+            renderizarTabela(filtrados);
+        }
 
 
 
 function alternarConferidos() {
-    ocultar = !ocultar;
-    document.getElementById('btn-ocultar').textContent = ocultar ? 'Mostrar Todos' : 'Ocultar Conferidos';
-    document.querySelectorAll('#corpo tr').forEach(tr => {
-        const idx = parseInt(tr.id?.replace('linha-', ''));
-        if (isNaN(idx)) return;
-        tr.style.display = (ocultar && itens[idx]?.conferido) ? 'none' : '';
-    });
-}
-function exportarCSV() {
-    if (itens.length === 0) { alert('Carregue um arquivo primeiro!'); return; }
-
-    // Definimos quantas colunas de fotos queremos (ex: até 5 fotos por item)
-    const maxFotos = 5;
-
-    // Monta o cabeçalho
-    let colunas = ['STATUS', 'MARCA', 'CODIGO', 'NOME', 'QTD_SISTEMA', 'QTD_CONFERIDA', 'LOCACAO', 'GTIN_ANTIGO', 'GTIN_NOVO'];
-    for (let i = 1; i <= maxFotos; i++) {
-        colunas.push(`FOTO_${i}`);
-    }
-
-    const linhas = [colunas.join('|')];
-
-    itens.forEach(item => {
-        const qtdC = item.qtdConferida != null ? item.qtdConferida : '';
-
-        // Dados básicos
-        let registro = [
-            item.conferido ? 'OK' : 'PENDENTE',
-            item.marca || '',
-            item.codigo,
-            `"${item.nome}"`,
-            item.qtd,
-            qtdC,
-            item.locacao,
-            item.gtinAntigo || '',
-            item.gtinNovo || ''
-        ];
-
-        // Adiciona as fotos nas colunas específicas
-        for (let i = 0; i < maxFotos; i++) {
-            if (item.fotos && item.fotos[i]) {
-                // Colocamos aspas duplas pois o Base64 é um texto gigante
-                registro.push(`"${item.fotos[i]}"`);
-            } else {
-                registro.push('""'); // Coluna vazia se não houver foto
-            }
+            ocultar = !ocultar;
+            document.getElementById('btn-ocultar').textContent = ocultar ? 'Mostrar Todos' : 'Ocultar Conferidos';
+            document.querySelectorAll('#corpo tr').forEach(tr => {
+                const idx = parseInt(tr.id?.replace('linha-', ''));
+                if (isNaN(idx)) return;
+                tr.style.display = (ocultar && itens[idx]?.conferido) ? 'none' : '';
+            });
         }
+function exportarCSV() {
+            if (itens.length === 0) { alert('Carregue um arquivo primeiro!'); return; }
 
-        linhas.push(registro.join('|'));
-    });
+            // Definimos quantas colunas de fotos queremos (ex: até 5 fotos por item)
+            const maxFotos = 5;
 
-    // Gera o arquivo
-    const csvContent = "\uFEFF" + linhas.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+            // Monta o cabeçalho
+            let colunas = ['STATUS', 'MARCA', 'CODIGO', 'NOME', 'QTD_SISTEMA', 'QTD_CONFERIDA', 'LOCACAO', 'GTIN_ANTIGO', 'GTIN_NOVO'];
+            for (let i = 1; i <= maxFotos; i++) {
+                colunas.push(`FOTO_${i}`);
+            }
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `estoque_conferido.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-}
-window.onload = async () => {
-    try {
-        // 1. Abre a conexão com o banco
-        const db = await abrirDB();
+            const linhas = [colunas.join('|')];
 
-        // 2. Cria uma transação de leitura
-        const tx = db.transaction("estoque", "readonly");
-        const store = tx.objectStore("estoque");
+            itens.forEach(item => {
+                const qtdC = item.qtdConferida != null ? item.qtdConferida : '';
 
-        // 3. Busca o backup
-        const request = store.get("backup_atual");
+                // Dados básicos
+                let registro = [
+                    item.conferido ? 'OK' : 'PENDENTE',
+                    item.marca || '',
+                    item.codigo,
+                    `"${item.nome}"`,
+                    item.qtd,
+                    qtdC,
+                    item.locacao,
+                    item.gtinAntigo || '',
+                    item.gtinNovo || ''
+                ];
 
-        request.onsuccess = () => {
-            const resultado = request.result;
-
-            // 4. Se encontrou dados e a lista de itens está vazia (primeiro acesso)
-            if (resultado && resultado.dados && resultado.dados.length > 0) {
-                if (confirm(`Encontramos ${resultado.dados.length} itens salvos. Deseja restaurar o progresso?`)) {
-                    itens = resultado.dados;
-                    renderizarTabela(itens);
-                    atualizarContador();
-
-                    // Mostra os botões de controle
-                    document.getElementById('btn-limpar').style.display = 'inline-block';
-                    document.getElementById('contador').style.display = 'block';
-
-                    const elInfo = document.getElementById('info-arquivo');
-                    if (elInfo) {
-                        elInfo.style.display = 'block';
-                        elInfo.textContent = "Dados restaurados da memória local (IndexedDB)";
+                // Adiciona as fotos nas colunas específicas
+                for (let i = 0; i < maxFotos; i++) {
+                    if (item.fotos && item.fotos[i]) {
+                        // Colocamos aspas duplas pois o Base64 é um texto gigante
+                        registro.push(`"${item.fotos[i]}"`);
+                    } else {
+                        registro.push('""'); // Coluna vazia se não houver foto
                     }
                 }
+
+                linhas.push(registro.join('|'));
+            });
+
+            // Gera o arquivo
+            const csvContent = "\uFEFF" + linhas.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `estoque_conferido.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+window.onload = async () => {
+            try {
+                // 1. Abre a conexão com o banco
+                const db = await abrirDB();
+
+                // 2. Cria uma transação de leitura
+                const tx = db.transaction("estoque", "readonly");
+                const store = tx.objectStore("estoque");
+
+                // 3. Busca o backup
+                const request = store.get("backup_atual");
+
+                request.onsuccess = () => {
+                    const resultado = request.result;
+
+                    // 4. Se encontrou dados e a lista de itens está vazia (primeiro acesso)
+                    if (resultado && resultado.dados && resultado.dados.length > 0) {
+                        if (confirm(`Encontramos ${resultado.dados.length} itens salvos. Deseja restaurar o progresso?`)) {
+                            itens = resultado.dados;
+                            renderizarTabela(itens);
+                            atualizarContador();
+
+                            // Mostra os botões de controle
+                            document.getElementById('btn-limpar').style.display = 'inline-block';
+                            document.getElementById('contador').style.display = 'block';
+
+                            const elInfo = document.getElementById('info-arquivo');
+                            if (elInfo) {
+                                elInfo.style.display = 'block';
+                                elInfo.textContent = "Dados restaurados da memória local (IndexedDB)";
+                            }
+                        }
+                    }
+                };
+
+                request.onerror = () => console.error("Erro ao buscar backup no IndexedDB");
+
+            } catch (e) {
+                console.error("Erro crítico na restauração:", e);
             }
         };
 
-        request.onerror = () => console.error("Erro ao buscar backup no IndexedDB");
+    async function limpar() {
+        if (!confirm("Isso apagará todo o progresso atual. Confirmar?")) return;
 
-    } catch (e) {
-        console.error("Erro crítico na restauração:", e);
+        const db = await abrirDB();
+        const tx = db.transaction("estoque", "readwrite");
+        tx.objectStore("estoque").delete("backup_atual");
+
+        tx.oncomplete = () => {
+            location.reload();
+        };
     }
-};
-
-async function limpar() {
-    if (!confirm("Isso apagará todo o progresso atual. Confirmar?")) return;
-
-    const db = await abrirDB();
-    const tx = db.transaction("estoque", "readwrite");
-    tx.objectStore("estoque").delete("backup_atual");
-
-    tx.oncomplete = () => {
-        location.reload();
-    };
-}
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') fecharModal();
-});
-
-function gerenciarCliqueItem(globalIdx) {
-    const item = itens[globalIdx];
-    const campoBusca = document.getElementById('busca');
-    const seletorFiltro = document.getElementById('filtro-tipo');
-
-    if (ultimaLocacaoClicada !== item.locacao) {
-        // 1º clique: salva contexto atual ANTES de mudar, depois filtra por locação
-        const tipoAtual = seletorFiltro.value;
-        const valorAtual = campoBusca.value.trim();
-
-        // Só salva se for busca de prateleira (para poder voltar)
-        if (tipoAtual === 'prateleira' && valorAtual !== '') {
-            contextoAnterior = { tipo: tipoAtual, valor: valorAtual };
-        } else if (tipoAtual !== 'locacao') {
-
-            contextoAnterior = valorAtual !== '' ? { tipo: tipoAtual, valor: valorAtual } : null;
-        }
-
-        ultimaLocacaoClicada = item.locacao;
-        seletorFiltro.value = "locacao";
-        campoBusca.value = item.locacao;
-        filtrar();
-    } else {
-
-        abrirModal(globalIdx);
-    }
-}
-function voltarListaCompleta() {
-    document.getElementById('busca').value = "";
-    document.getElementById('filtro-tipo').value = "todos";
-    ultimaLocacaoClicada = "";
-    contextoAnterior = null;
-    renderizarTabela(itens);
-}
-
-function alternarAlertas() {
-    ocultarAlertas = !ocultarAlertas;
-    const btn = document.getElementById('btn-ocultar-alertas');
-
-    // Muda o texto e destaca o botão quando ativo
-    btn.textContent = ocultarAlertas ? 'Mostrar Alertas' : 'Ocultar Alertas';
-    btn.style.backgroundColor = ocultarAlertas ? '#fff9c4' : '#fff';
-    btn.style.color = '#000';
-    renderizarTabela(itens);
-}
-const inputGtin = document.getElementById('modal-gtin-novo');
-const inputQuantidade = document.getElementById('modal-qtdo');
-
-if (inputGtin && inputQuantidade) {
-    inputGtin.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            inputQuantidade.focus();
-            inputQuantidade.select();
-        }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') fecharModal();
     });
-}
+
+    function gerenciarCliqueItem(globalIdx) {
+        const item = itens[globalIdx];
+        const campoBusca = document.getElementById('busca');
+        const seletorFiltro = document.getElementById('filtro-tipo');
+
+        if (ultimaLocacaoClicada !== item.locacao) {
+            // 1º clique: salva contexto atual ANTES de mudar, depois filtra por locação
+            const tipoAtual = seletorFiltro.value;
+            const valorAtual = campoBusca.value.trim();
+
+            // Só salva se for busca de prateleira (para poder voltar)
+            if (tipoAtual === 'prateleira' && valorAtual !== '') {
+                contextoAnterior = { tipo: tipoAtual, valor: valorAtual };
+            } else if (tipoAtual !== 'locacao') {
+
+                contextoAnterior = valorAtual !== '' ? { tipo: tipoAtual, valor: valorAtual } : null;
+            }
+
+            ultimaLocacaoClicada = item.locacao;
+            seletorFiltro.value = "locacao";
+            campoBusca.value = item.locacao;
+            filtrar();
+        } else {
+
+            abrirModal(globalIdx);
+        }
+    }
+    function voltarListaCompleta() {
+        document.getElementById('busca').value = "";
+        document.getElementById('filtro-tipo').value = "todos";
+        ultimaLocacaoClicada = "";
+        contextoAnterior = null;
+        renderizarTabela(itens);
+    }
+    function alternarAlertas() {
+        ocultarAlertas = !ocultarAlertas; // Inverte o valor (true/false)
+
+        const btn = document.getElementById('btn-ocultar-alertas');
+        if (btn) {
+            btn.textContent = ocultarAlertas ? 'Mostrar Alertas' : 'Ocultar Alertas';
+    
+        }
+
+        // IMPORTANTE: Se você estiver usando uma lista filtrada, 
+        // passe a lista atual, se não, passe 'itens'
+        const buscaVal = document.getElementById('busca').value.trim();
+        if (buscaVal === "") {
+            renderizarTabela(itens);
+        } else {
+            filtrar(); // Se houver busca, re-filtra para aplicar a regra
+        }
+    }
+
+    const inputGtin = document.getElementById('modal-gtin-novo');
+    const inputQuantidade = document.getElementById('modal-qtdo');
+
+    if (inputGtin && inputQuantidade) {
+        inputGtin.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                inputQuantidade.focus();
+                inputQuantidade.select();
+            }
+        });
+    }

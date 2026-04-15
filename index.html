@@ -14,11 +14,21 @@
 
     <div class="container">
         <h1>Analise Estoque Hontec</h1>
+        <div class="log-container">
+            <div class="log-header" id="log-header">
+                <span>🕒 ÚLTIMAS AÇÕES</span>
+                <span id="log-seta">▼</span>
+            </div>
+            <div id="log-lista"
+                style="display:none; max-height: 120px; overflow-y: auto; border:1px solid #1a1a1a; border-top:none; background:#fff; font-size:11px;">
+                <!-- Itens aparecerão aqui -->
+            </div>
+        </div>
 
         <div class="linha-botoes">
             <button class="botao" onclick="document.getElementById('entrada-arquivo').click()">Abrir Arquivo</button>
             <button class="botao" id="btn-ocultar" onclick="alternarConferidos()">Mostrar todos</button>
-              <button class="botao" id="btn-ocultar-alertas" onclick="alternarAlertas()">Ocultar Alertas</button>
+            <button class="botao" id="btn-ocultar-alertas" onclick="alternarAlertas()">Ocultar Alertas</button>
             <button class="botao" onclick="exportarCSV()">⬇ Exportar</button>
             <button class="botao" id="btn-limpar" onclick="limpar()" style="display:none">Novo</button>
         </div>
@@ -133,8 +143,10 @@
                 <div class="modal-cell fotos-cell">
                     <span class="modal-cell-label">Fotos</span>
                     <div class="galeria-fotos" id="galeria-fotos"></div>
-                    <button class="btn-adicionar-foto" onclick="document.getElementById('foto-input').click()">+ Adicionar Foto</button>
-                    <input type="file" id="foto-input" accept="image/*" multiple onchange="carregarFotos(this)" style="display:none">
+                    <button class="btn-adicionar-foto" onclick="document.getElementById('foto-input').click()">+
+                        Adicionar Foto</button>
+                    <input type="file" id="foto-input" accept="image/*" multiple onchange="carregarFotos(this)"
+                        style="display:none">
                 </div>
             </div>
 

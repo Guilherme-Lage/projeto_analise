@@ -186,8 +186,6 @@ td {
     padding: 10px 12px;
     vertical-align: middle;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 td.col-status {
@@ -858,3 +856,42 @@ tbody tr.conferido {
     border-color: #00009C;
     border-style: solid;
 }
+
+.log-container {
+    background: #fff;
+    border: 1.5px solid #1a1a1a;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    font-size: 11px;
+}
+
+.log-header {
+    padding: 8px 12px;
+    background: #f7f5f2;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+}
+
+.log-lista {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.log-lista.aberto {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.log-item {
+    padding: 6px 12px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+}
+
+.log-item:nth-child(odd) { background: #fafafa; }
+
+.log-item b { color: #00009C; }
