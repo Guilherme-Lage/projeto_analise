@@ -28,10 +28,10 @@ async function salvarBackup() {
         const db = await abrirDB();
         const tx = db.transaction("estoque", "readwrite");
         const store = tx.objectStore("estoque");
-        
+
         // Salva o array 'itens' dentro do ID 'backup_atual'
         await store.put({ id: "backup_atual", dados: itens });
-        
+
         return new Promise((resolve) => {
             tx.oncomplete = () => {
                 console.log("Progresso salvo no IndexedDB");
@@ -167,14 +167,14 @@ function carregarFotos(input) {
 
                 // Converte para JPEG com qualidade baixa (0.4) para o texto ficar curto
                 const fotoCompacta = canvas.toDataURL('image/jpeg', 0.4);
-                
+
                 item.fotos.push(fotoCompacta);
                 lidos++;
 
                 if (lidos === arquivos.length) {
                     renderizarGaleria(item.fotos);
                     // Aqui você chama a função do IndexedDB que criamos antes
-                    salvarBackup(); 
+                    salvarBackup();
                 }
             };
             img.src = e.target.result;
@@ -188,23 +188,31 @@ async function confirmarModal() {
     if (idxModalAtual < 0) return;
     const item = itens[idxModalAtual];
 
-    const elLoc = document.getElementById('modal-locacao');
+    const elLoc   = document.getElementById('modal-locacao');
     const elMarca = document.getElementById('modal-marca');
     const elGtinN = document.getElementById('modal-gtin-novo');
-    const elQtd = document.getElementById('modal-qtdo');
+    const elQtd   = document.getElementById('modal-qtdo');
 
     if (elLoc && elLoc.value.trim() !== "") item.locacao = elLoc.value.trim().toUpperCase();
-    if (elMarca) item.marca = elMarca.value.trim().toUpperCase();
+    if (elMarca) item.marca    = elMarca.value.trim().toUpperCase();
     if (elGtinN) item.gtinNovo = elGtinN.value.trim().toUpperCase();
-    if (elQtd) item.qtdConferida = elQtd.value !== '' ? parseFloat(elQtd.value) : 0;
+    if (elQtd)   item.qtdConferida = elQtd.value !== '' ? parseFloat(elQtd.value) : 0;
 
-    item.conferido = true; // Define como conferido
+    item.conferido = !item.conferido; // toggle: confirma ou desmarca
 
-    // ESTA LINHA É A MAIS IMPORTANTE:
-    await salvarBackup(); 
+    await salvarBackup();
 
-    // O restante do seu código (atualizar tabela, fechar modal...)
-    renderizarTabela(itens);
+    // Volta ao contexto de busca anterior (ex: prateleira) ou lista completa
+    ultimaLocacaoClicada = "";
+    if (contextoAnterior) {
+        document.getElementById('filtro-tipo').value = contextoAnterior.tipo;
+        document.getElementById('busca').value = contextoAnterior.valor;
+        filtrar();
+    } else {
+        document.getElementById('busca').value = "";
+        document.getElementById('filtro-tipo').value = "todos";
+        renderizarTabela(itens);
+    }
     atualizarContador();
     fecharModal();
 }
@@ -283,55 +291,89 @@ function processarCSV(texto, nomeArquivo) {
         const cabecalho = parseLinhaCsv(linhas[0], sep).map(v => v.toUpperCase().trim());
         const idx = (nome) => cabecalho.findIndex(c => c.includes(nome.toUpperCase()));
 
-        const iCodigo = idx('ITEM_ESTOQUE_PUB');
-        const iNome = idx('DES_ITEM_ESTOQUE');
-        const iQtd = idx('QTD_CONTABIL');
-        const iZona = idx('LOCACAO_ZONA');
-        const iRua = idx('LOCACAO_RUA');
-        const iEstante = idx('LOCACAO_ESTANTE');
-        const iPrateleira = idx('LOCACAO_PRATELEIRA');
-        const iNumero = idx('LOCACAO_NUMERO');
-        const iMarcaCSV = idx('MARCA');
-        // Aceita COD_EAN_GTIN ou GTIN
-        let iGtin = idx('COD_EAN_GTIN');
-        if (iGtin < 0) iGtin = idx('GTIN');
-
-        console.log('Colunas detectadas:', { iCodigo, iNome, iQtd, iZona, iRua, iEstante, iPrateleira, iNumero, iGtin });
+        // Detecta se é CSV exportado (tem STATUS + LOCACAO + CODIGO) ou original do sistema
+        const ehExportado = idx('STATUS') >= 0 && idx('LOCACAO') >= 0 && idx('CODIGO') >= 0;
 
         itens = [];
 
-        for (let i = 1; i < linhas.length; i++) {
-            const cols = parseLinhaCsv(linhas[i], sep);
-            if (cols.length < 2) continue;
+        if (ehExportado) {
+            // ── CSV EXPORTADO ───────────────────────────────────────────
+            const iStatus    = idx('STATUS');
+            const iMarca     = idx('MARCA');
+            const iCodigo    = idx('CODIGO');
+            const iNome      = idx('NOME');
+            const iQtd       = idx('QTD_SISTEMA');
+            const iQtdConf   = idx('QTD_CONFERIDA');
+            const iLocacao   = idx('LOCACAO');
+            const iGtinAntig = idx('GTIN_ANTIGO');
+            const iGtinNovo  = idx('GTIN_NOVO');
 
-            const zona = iZona >= 0 ? cols[iZona] : '';
-            const rua = iRua >= 0 ? cols[iRua] : '';
-            const est = iEstante >= 0 ? cols[iEstante] : '';
-            const prat = iPrateleira >= 0 ? cols[iPrateleira] : '';
-            const num = iNumero >= 0 ? cols[iNumero] : '';
+            // Detecta colunas de fotos (FOTO_1, FOTO_2, ...)
+            const fotoCols = cabecalho.reduce((acc, nome, i) => {
+                if (/^FOTO_\d+$/.test(nome)) acc.push(i);
+                return acc;
+            }, []);
 
-            const locacao = [zona, rua, est, prat, num].filter(Boolean).join('.');
-            const codigo = iCodigo >= 0 ? cols[iCodigo] : `item-${i}`;
-            const nome = iNome >= 0 ? cols[iNome] : '---';
-            const gtin = iGtin >= 0 ? cols[iGtin] : '---';
-            const marcaCSV = iMarcaCSV >= 0 ? cols[iMarcaCSV] : '';
-            const qtdRaw = (iQtd >= 0 && cols[iQtd] != null) ? cols[iQtd] : '0';
-            const qtd = parseFloat(qtdRaw.replace(',', '.')) || 0;
+            for (let i = 1; i < linhas.length; i++) {
+                const cols = parseLinhaCsv(linhas[i], sep);
+                if (cols.length < 2) continue;
 
-            if (!codigo) continue;
+                const fotos = fotoCols.map(fi => cols[fi] || '').filter(f => f.trim() !== '');
+                const qtdRaw = iQtd >= 0 ? cols[iQtd] : '0';
+                const qtdConfRaw = iQtdConf >= 0 ? cols[iQtdConf] : '';
 
-            itens.push({
-                locacao: locacao.toUpperCase(),
-                codigo: codigo.toUpperCase(),
-                nome: nome.toUpperCase(),
-                qtd: qtd,
-                gtinAntigo: gtin.toUpperCase(),
-                conferido: false,
-                marca: marcaCSV.toUpperCase(),
-                gtinNovo: '',
-                qtdConferida: null,
-                fotos: []
-            });
+                itens.push({
+                    locacao:      (iLocacao >= 0   ? cols[iLocacao]   : '').toUpperCase(),
+                    codigo:       (iCodigo >= 0    ? cols[iCodigo]    : '').toUpperCase(),
+                    nome:         (iNome >= 0      ? cols[iNome]      : '').toUpperCase(),
+                    qtd:          parseFloat(qtdRaw.replace(',', '.')) || 0,
+                    gtinAntigo:   (iGtinAntig >= 0 ? cols[iGtinAntig] : '').toUpperCase(),
+                    gtinNovo:     (iGtinNovo >= 0  ? cols[iGtinNovo]  : '').toUpperCase(),
+                    marca:        (iMarca >= 0     ? cols[iMarca]     : '').toUpperCase(),
+                    conferido:    iStatus >= 0 && cols[iStatus].toUpperCase() === 'OK',
+                    qtdConferida: qtdConfRaw !== '' ? parseFloat(qtdConfRaw) : null,
+                    fotos:        fotos
+                });
+            }
+
+        } else {
+            // ── CSV ORIGINAL DO SISTEMA ─────────────────────────────────
+            const iCodigo     = idx('ITEM_ESTOQUE_PUB');
+            const iNome       = idx('DES_ITEM_ESTOQUE');
+            const iQtd        = idx('QTD_CONTABIL');
+            const iZona       = idx('LOCACAO_ZONA');
+            const iRua        = idx('LOCACAO_RUA');
+            const iEstante    = idx('LOCACAO_ESTANTE');
+            const iPrateleira = idx('LOCACAO_PRATELEIRA');
+            const iNumero     = idx('LOCACAO_NUMERO');
+            const iMarcaCSV   = idx('MARCA');
+            let   iGtin       = idx('COD_EAN_GTIN');
+            if (iGtin < 0)    iGtin = idx('GTIN');
+
+            for (let i = 1; i < linhas.length; i++) {
+                const cols = parseLinhaCsv(linhas[i], sep);
+                if (cols.length < 2) continue;
+
+                const locacao = [iZona, iRua, iEstante, iPrateleira, iNumero]
+                    .map(x => (x >= 0 && cols[x]) ? cols[x].trim() : '')
+                    .filter(Boolean).join('.');
+
+                const codigo = iCodigo >= 0 ? cols[iCodigo] : `item-${i}`;
+                if (!codigo) continue;
+
+                itens.push({
+                    locacao:      locacao.toUpperCase(),
+                    codigo:       codigo.toUpperCase(),
+                    nome:         (iNome >= 0 ? cols[iNome] : '---').toUpperCase(),
+                    qtd:          parseFloat((iQtd >= 0 ? cols[iQtd] : '0').replace(',', '.')) || 0,
+                    gtinAntigo:   (iGtin >= 0 ? cols[iGtin] : '---').toUpperCase(),
+                    gtinNovo:     '',
+                    marca:        (iMarcaCSV >= 0 ? cols[iMarcaCSV] : '').toUpperCase(),
+                    conferido:    false,
+                    qtdConferida: null,
+                    fotos:        []
+                });
+            }
         }
 
         itens.sort((a, b) => a.locacao.localeCompare(b.locacao, undefined, { numeric: true }));
@@ -339,7 +381,6 @@ function processarCSV(texto, nomeArquivo) {
         renderizarTabela(itens);
         atualizarContador();
 
-        // Atualiza legenda — tenta achar o elemento, se não existir cria
         let elInfo = document.getElementById('info-arquivo');
         if (!elInfo) {
             elInfo = document.createElement('div');
@@ -348,7 +389,7 @@ function processarCSV(texto, nomeArquivo) {
             document.querySelector('.tabela-wrapper').before(elInfo);
         }
         elInfo.style.display = 'block';
-        elInfo.textContent = `${nomeArquivo} — ${itens.length} itens carregados`;
+        elInfo.textContent = `${nomeArquivo} — ${itens.length} itens${ehExportado ? ' (exportado)' : ''}`;
         document.getElementById('btn-limpar').style.display = 'inline-block';
 
     } catch (erro) {
@@ -491,28 +532,30 @@ function exportarCSV() {
     if (itens.length === 0) { alert('Carregue um arquivo primeiro!'); return; }
 
     // Definimos quantas colunas de fotos queremos (ex: até 5 fotos por item)
-    const maxFotos = 5; 
-    
+    const maxFotos = 5;
+
     // Monta o cabeçalho
-    let colunas = ['STATUS', 'MARCA', 'CODIGO', 'NOME', 'QTD_SISTEMA', 'QTD_CONFERIDA', 'LOCACAO'];
+    let colunas = ['STATUS', 'MARCA', 'CODIGO', 'NOME', 'QTD_SISTEMA', 'QTD_CONFERIDA', 'LOCACAO', 'GTIN_ANTIGO', 'GTIN_NOVO'];
     for (let i = 1; i <= maxFotos; i++) {
         colunas.push(`FOTO_${i}`);
     }
-    
+
     const linhas = [colunas.join('|')];
 
     itens.forEach(item => {
         const qtdC = item.qtdConferida != null ? item.qtdConferida : '';
-        
+
         // Dados básicos
         let registro = [
             item.conferido ? 'OK' : 'PENDENTE',
             item.marca || '',
             item.codigo,
-            `"${item.nome}"`, // Aspas para proteger o nome
+            `"${item.nome}"`,
             item.qtd,
             qtdC,
-            item.locacao
+            item.locacao,
+            item.gtinAntigo || '',
+            item.gtinNovo || ''
         ];
 
         // Adiciona as fotos nas colunas específicas
@@ -532,7 +575,7 @@ function exportarCSV() {
     const csvContent = "\uFEFF" + linhas.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    
+
     const link = document.createElement("a");
     link.href = url;
     link.download = `estoque_conferido.csv`;
@@ -543,28 +586,28 @@ window.onload = async () => {
     try {
         // 1. Abre a conexão com o banco
         const db = await abrirDB();
-        
+
         // 2. Cria uma transação de leitura
         const tx = db.transaction("estoque", "readonly");
         const store = tx.objectStore("estoque");
-        
+
         // 3. Busca o backup
         const request = store.get("backup_atual");
 
         request.onsuccess = () => {
             const resultado = request.result;
-            
+
             // 4. Se encontrou dados e a lista de itens está vazia (primeiro acesso)
             if (resultado && resultado.dados && resultado.dados.length > 0) {
                 if (confirm(`Encontramos ${resultado.dados.length} itens salvos. Deseja restaurar o progresso?`)) {
                     itens = resultado.dados;
                     renderizarTabela(itens);
                     atualizarContador();
-                    
+
                     // Mostra os botões de controle
                     document.getElementById('btn-limpar').style.display = 'inline-block';
                     document.getElementById('contador').style.display = 'block';
-                    
+
                     const elInfo = document.getElementById('info-arquivo');
                     if (elInfo) {
                         elInfo.style.display = 'block';
@@ -573,7 +616,7 @@ window.onload = async () => {
                 }
             }
         };
-        
+
         request.onerror = () => console.error("Erro ao buscar backup no IndexedDB");
 
     } catch (e) {
@@ -641,7 +684,7 @@ function alternarAlertas() {
     btn.style.color = '#000';
     renderizarTabela(itens);
 }
-const inputGtin = document.getElementById('modal-gtin-novo'); 
+const inputGtin = document.getElementById('modal-gtin-novo');
 const inputQuantidade = document.getElementById('modal-qtdo');
 
 if (inputGtin && inputQuantidade) {
