@@ -61,8 +61,27 @@ function abrirModal(globalIdx) {
         }
 
         // 2. Preencher Locação
-        const elLoc = document.getElementById('modal-locacao');
-        if (elLoc) elLoc.value = item.locacao || '';
+        // Dentro do abrirModal
+
+        const btnLoc = document.getElementById('modal-status-loc');
+        const cellNova = document.getElementById('cell-loc-nova');
+        const inputNova = document.getElementById('modal-locacao-nova');
+
+        // Mostra a original no texto
+        document.getElementById('modal-loc-texto').textContent = item.locacaoOriginal || item.locacao;
+
+        if (item.trocaLocacao) {
+            btnLoc.textContent = "X";
+            btnLoc.style.background = "#CC0000";
+            btnLoc.style.color = "#fff";
+            cellNova.style.display = "block"; // Mudamos para block para ocupar a linha toda
+            inputNova.value = item.locacaoNova || "";
+        } else {
+            btnLoc.textContent = "";
+            btnLoc.style.background = "transparent";
+            cellNova.style.display = "none";
+            inputNova.value = "";
+        }
 
         // 3. Preencher Código e Nome
         document.getElementById('modal-cod-nome').textContent = `${item.codigo} — ${item.nome}`;
@@ -87,7 +106,7 @@ function abrirModal(globalIdx) {
         if (item.conferido) {
             // Se já foi feito, o botão vira ALTERAR
             btnConf.textContent = 'ALTERAR';
-            btnConf.classList.add('ja-conferido'); 
+            btnConf.classList.add('ja-conferido');
         } else {
             // Se for novo, continua CONFIRMAR
             btnConf.textContent = 'CONFIRMAR';
@@ -242,21 +261,45 @@ async function confirmarModal() {
     try {
         if (idxModalAtual < 0) return;
         const item = itens[idxModalAtual];
-        // Dentro de confirmarModal
-        const elGtinN = document.getElementById('modal-gtin-novo'); // Pega o campo do HTML
-        const elMarca = document.getElementById('modal-marca');
 
-        if (elGtinN) item.gtinNovo = elGtinN.value.trim().toUpperCase(); // SALVA no objeto item
+        // 1. Captura GTIN e Marca
+        const elGtinN = document.getElementById('modal-gtin-novo');
+        const elMarca = document.getElementById('modal-marca');
+        if (elGtinN) item.gtinNovo = elGtinN.value.trim().toUpperCase();
         if (elMarca) item.marca = elMarca.value.trim().toUpperCase();
 
+        // 2. Captura Quantidade
         const elQtd = document.getElementById('modal-qtdo');
         if (elQtd) item.qtdConferida = elQtd.value !== '' ? parseFloat(elQtd.value) : 0;
 
+        // 3. Gerencia TROCA DE LOCAÇÃO (Ordem Corrigida)
+        const inputNova = document.getElementById('modal-locacao-nova');
+        const btn = document.getElementById('modal-status-loc');
+
+        if (btn.textContent === "X" && inputNova.value.trim() !== "") {
+            // Salva a original APENAS se ainda não existir uma salva
+            if (!item.locacaoOriginal) {
+                item.locacaoOriginal = item.locacao;
+            }
+            item.trocaLocacao = true;
+            item.locacaoNova = inputNova.value.trim().toUpperCase();
+            item.locacao = item.locacaoNova; // Atualiza para a tabela
+        } else {
+            // Se desmarcar o X, volta para a original
+            if (item.locacaoOriginal) {
+                item.locacao = item.locacaoOriginal;
+            }
+            item.trocaLocacao = false;
+            item.locacaoNova = "";
+        }
+
+        // 4. Salva a Data (Use o nome dataHoraRegistro para bater com seu abrirModal)
         const agora = new Date();
-        item.dataConferencia = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        item.dataHoraRegistro = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
         item.conferido = true;
 
+        // 5. Finalização
         try { adicionarLog(item); } catch (e) { console.log("Erro no log"); }
 
         await salvarBackup();
@@ -264,8 +307,8 @@ async function confirmarModal() {
         atualizarContador();
         fecharModal();
 
+        // 6. Lógica de Contexto (Preservada)
         ultimaLocacaoClicada = "";
-
         if (contextoAnterior) {
             document.getElementById('filtro-tipo').value = contextoAnterior.tipo;
             document.getElementById('busca').value = contextoAnterior.valor;
@@ -280,6 +323,7 @@ async function confirmarModal() {
         fecharModal();
     }
 }
+
 
 //  CSV 
 
@@ -573,7 +617,74 @@ function filtrar() {
 
     renderizarTabela(filtrados);
 }
+function exportarCSV() {
+    try {
+        if (itens.length === 0) {
+            alert('Carregue um arquivo primeiro!');
+            return;
+        }
 
+        const maxFotos = 5;
+
+        // 1. Cabeçalho
+        let colunas = [
+            'STATUS', 'MARCA', 'CODIGO', 'NOME', 'QTD_SISTEMA',
+            'QTD_CONFERIDA', 'LOCACAO', 'LOCACAO_NOVA', 'GTIN_ANTIGO', 'GTIN_NOVO'
+        ];
+
+        for (let i = 1; i <= maxFotos; i++) {
+            colunas.push(`FOTO_${i}`);
+        }
+
+        const linhas = [colunas.join('|')];
+
+        // 2. Processamento dos itens
+        itens.forEach(item => {
+            const qtdC = item.qtdConferida != null ? item.qtdConferida : '';
+
+            let registro = [
+                item.conferido ? 'OK' : 'PENDENTE',
+                item.marca || '',
+                item.codigo,
+                `"${item.nome}"`,
+                item.qtd,
+                qtdC,
+                // AJUSTE AQUI: Sempre exporta a ORIGINAL na coluna LOCACAO
+                item.locacaoOriginal || item.locacao,
+                // E a NOVA apenas na coluna LOCACAO_NOVA
+                item.locacaoNova || '',
+                item.gtinAntigo || '',
+                item.gtinNovo || ''
+            ];
+
+            for (let i = 0; i < maxFotos; i++) {
+                if (item.fotos && item.fotos[i]) {
+                    registro.push(`"${item.fotos[i]}"`);
+                } else {
+                    registro.push('""');
+                }
+            }
+
+            linhas.push(registro.join('|'));
+        });
+
+        // 3. Gerar arquivo
+        const csvContent = "\uFEFF" + linhas.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `estoque_conferido.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+    } catch (erro) {
+        console.error("Erro ao exportar:", erro);
+    }
+}
 
 
 function alternarConferidos() {
@@ -585,55 +696,73 @@ function alternarConferidos() {
         tr.style.display = (ocultar && itens[idx]?.conferido) ? 'none' : '';
     });
 }
-function exportarCSV() {
-    if (itens.length === 0) { alert('Carregue um arquivo primeiro!'); return; }
+async function confirmarModal() {
+    try {
+        if (idxModalAtual < 0) return;
+        const item = itens[idxModalAtual];
 
-    const maxFotos = 5;
+        // 1. Captura GTIN e Marca
+        const elGtinN = document.getElementById('modal-gtin-novo');
+        const elMarca = document.getElementById('modal-marca');
+        if (elGtinN) item.gtinNovo = elGtinN.value.trim().toUpperCase();
+        if (elMarca) item.marca = elMarca.value.trim().toUpperCase();
 
-    let colunas = ['STATUS', 'MARCA', 'CODIGO', 'NOME', 'QTD_SISTEMA', 'QTD_CONFERIDA', 'LOCACAO', 'GTIN_ANTIGO', 'GTIN_NOVO'];
-    for (let i = 1; i <= maxFotos; i++) {
-        colunas.push(`FOTO_${i}`);
-    }
+        // 2. Captura Quantidade
+        const elQtd = document.getElementById('modal-qtdo');
+        if (elQtd) item.qtdConferida = elQtd.value !== '' ? parseFloat(elQtd.value) : 0;
 
-    const linhas = [colunas.join('|')];
+        // 3. Gerencia TROCA DE LOCAÇÃO (Ordem Corrigida)
+        const inputNova = document.getElementById('modal-locacao-nova');
+        const btn = document.getElementById('modal-status-loc');
 
-    itens.forEach(item => {
-        const qtdC = item.qtdConferida != null ? item.qtdConferida : '';
-
-        let registro = [
-            item.conferido ? 'OK' : 'PENDENTE',
-            item.marca || '',
-            item.codigo,
-            `"${item.nome}"`,
-            item.qtd,
-            qtdC,
-            item.locacao,
-            item.gtinAntigo || '',
-            item.gtinNovo || ''
-        ];
-
-        for (let i = 0; i < maxFotos; i++) {
-            if (item.fotos && item.fotos[i]) {
-                registro.push(`"${item.fotos[i]}"`);
-            } else {
-                registro.push('""');
+        if (btn.textContent === "X" && inputNova.value.trim() !== "") {
+            // Salva a original APENAS se ainda não existir uma salva
+            if (!item.locacaoOriginal) {
+                item.locacaoOriginal = item.locacao;
             }
+            item.trocaLocacao = true;
+            item.locacaoNova = inputNova.value.trim().toUpperCase();
+            item.locacao = item.locacaoNova; // Atualiza para a tabela
+        } else {
+            // Se desmarcar o X, volta para a original
+            if (item.locacaoOriginal) {
+                item.locacao = item.locacaoOriginal;
+            }
+            item.trocaLocacao = false;
+            item.locacaoNova = "";
         }
 
-        linhas.push(registro.join('|'));
-    });
+        // 4. Salva a Data (Use o nome dataHoraRegistro para bater com seu abrirModal)
+        const agora = new Date();
+        item.dataHoraRegistro = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-    // Gera o arquivo
-    const csvContent = "\uFEFF" + linhas.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+        item.conferido = true;
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `estoque_conferido.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+        // 5. Finalização
+        try { adicionarLog(item); } catch (e) { console.log("Erro no log"); }
+
+        await salvarBackup();
+        renderizarTabela(itens);
+        atualizarContador();
+        fecharModal();
+
+        // 6. Lógica de Contexto (Preservada)
+        ultimaLocacaoClicada = "";
+        if (contextoAnterior) {
+            document.getElementById('filtro-tipo').value = contextoAnterior.tipo;
+            document.getElementById('busca').value = contextoAnterior.valor;
+            filtrar();
+        } else {
+            document.getElementById('busca').value = "";
+            document.getElementById('filtro-tipo').value = "todos";
+            renderizarTabela(itens);
+        }
+    } catch (erro) {
+        console.error("Erro ao confirmar:", erro);
+        fecharModal();
+    }
 }
+
 window.onload = async () => {
     try {
 
@@ -751,3 +880,24 @@ if (inputGtin && inputQuantidade) {
         }
     });
 }
+function alternarTrocaLocacao() {
+    const btn = document.getElementById('modal-status-loc');
+    const cellNova = document.getElementById('cell-loc-nova');
+    const inputNova = document.getElementById('modal-locacao-nova');
+
+    if (btn.textContent === "") {
+        btn.textContent = "X";
+        btn.style.background = "#CC0000";
+        btn.style.color = "#fff";
+        btn.style.borderColor = "#CC0000";
+        cellNova.style.display = "flex";
+        inputNova.focus();
+    } else {
+        btn.textContent = "";
+        btn.style.background = "transparent";
+        btn.style.borderColor = "#1a1a1a";
+        cellNova.style.display = "none";
+        inputNova.value = "";
+    }
+}
+

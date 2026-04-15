@@ -14,7 +14,7 @@
 
     <div class="container">
         <h1>Analise Estoque Hontec</h1>
-      
+
         <div class="linha-botoes">
             <button class="botao" onclick="document.getElementById('entrada-arquivo').click()">Abrir Arquivo</button>
             <button class="botao" id="btn-ocultar" onclick="alternarConferidos()">Mostrar todos</button>
@@ -22,7 +22,7 @@
             <button class="botao" onclick="exportarCSV()">⬇ Exportar</button>
             <button class="botao" id="btn-limpar" onclick="limpar()" style="display:none">Novo</button>
         </div>
-  <div class="log-container">
+        <div class="log-container">
             <div class="log-header" id="log-header">
                 <span>🕒 ÚLTIMAS AÇÕES</span>
                 <span id="log-seta">▼</span>
@@ -89,74 +89,90 @@
             <div class="modal-body">
 
                 <!-- Linha 1: LOC | MARCA -->
-                <div class="modal-row row-loc-marca">
-                    <div class="modal-cell">
-                        <span class="modal-cell-label">Locação</span>
-                        <input class="modal-cell-input" id="modal-locacao">
+                <div class="modal-body">
+                    <!-- Linha 1: Locação Original (Esquerda) | Marca (Direita) -->
+                    <div class="modal-row"
+                        style="display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1.5px solid #e8e8e8;">
+                        <div class="modal-cell" style="border-right: 1.5px solid #e8e8e8;">
+                            <span class="modal-cell-label">Locação Original</span>
+                            <div
+                                style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                <span id="modal-loc-texto" style="font-size: 13px; font-weight: 600;"></span>
+                                <div id="modal-status-loc" onclick="alternarTrocaLocacao()"
+                                    style="width: 18px; height: 18px; border: 1.5px solid #1a1a1a; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; font-weight: bold; border-radius: 3px;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-cell">
+                            <span class="modal-cell-label">Marca</span>
+                            <input class="modal-cell-input" id="modal-marca">
+                        </div>
                     </div>
-                    <div class="modal-cell">
-                        <span class="modal-cell-label">Marca</span>
-                        <input class="modal-cell-input" id="modal-marca" type="text" placeholder="">
+
+                    <!-- Linha 2: Nova Locação (Ocupa a largura toda quando aparece) -->
+                    <div class="modal-cell" id="cell-loc-nova"
+                        style="display: none; background: #fff5f5; border-bottom: 1.5px solid #e8e8e8;">
+                        <span class="modal-cell-label" style="color: #CC0000;">Nova Locação</span>
+                        <input class="modal-cell-input" id="modal-locacao-nova" placeholder="DIGITE AQUI..."
+                            style="color: #CC0000; font-weight: 600;">
+                    </div>
+                    <!-- Linha 2: COD + NOME -->
+                    <div class="modal-row row-cod-nome">
+                        <div class="modal-cell">
+                            <span class="modal-cell-label">Código + Nome</span>
+                            <span class="modal-cell-value" id="modal-cod-nome">—</span>
+                        </div>
+                    </div>
+
+
+
+                    <!-- Linha 4: GTIN ANTIGO -->
+                    <div class="modal-row row-gtin">
+                        <div class="modal-cell">
+                            <span class="modal-cell-label">GTIN Antigo</span>
+                            <span class="modal-cell-input" id="modal-gtin-antigo" type="text" placeholder=""></span>
+                        </div>
+                    </div>
+
+                    <!-- Linha 5: GTIN NOVO -->
+                    <div class="modal-row row-gtin">
+                        <div class="modal-cell">
+                            <span class="modal-cell-label">GTIN Novo</span>
+                            <input class="modal-cell-input" id="modal-gtin-novo" type="text" placeholder="">
+                        </div>
+                    </div>
+
+                    <!-- Linha 6: QTDO -->
+                    <div class="modal-row row-qtdo">
+                        <div class="modal-cell">
+                            <span class="modal-cell-label">Quantidade</span>
+                            <input class="modal-cell-input" id="modal-qtdo" type="number" min="0" step="any"
+                                placeholder="0">
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- GALERIA DE FOTOS (múltiplas) -->
+                <div class="modal-row row-fotos">
+                    <div class="modal-cell fotos-cell">
+                        <span class="modal-cell-label">Fotos</span>
+                        <div class="galeria-fotos" id="galeria-fotos"></div>
+                        <button class="btn-adicionar-foto" onclick="document.getElementById('foto-input').click()">+
+                            Adicionar Foto</button>
+                        <input type="file" id="foto-input" accept="image/*" multiple onchange="carregarFotos(this)"
+                            style="display:none">
                     </div>
                 </div>
 
-                <!-- Linha 2: COD + NOME -->
-                <div class="modal-row row-cod-nome">
-                    <div class="modal-cell">
-                        <span class="modal-cell-label">Código + Nome</span>
-                        <span class="modal-cell-value" id="modal-cod-nome">—</span>
-                    </div>
-                </div>
-
-
-
-                <!-- Linha 4: GTIN ANTIGO -->
-                <div class="modal-row row-gtin">
-                    <div class="modal-cell">
-                        <span class="modal-cell-label">GTIN Antigo</span>
-                        <span class="modal-cell-input" id="modal-gtin-antigo" type="text" placeholder=""></span>
-                    </div>
-                </div>
-
-                <!-- Linha 5: GTIN NOVO -->
-                <div class="modal-row row-gtin">
-                    <div class="modal-cell">
-                        <span class="modal-cell-label">GTIN Novo</span>
-                        <input class="modal-cell-input" id="modal-gtin-novo" type="text" placeholder="">
-                    </div>
-                </div>
-
-                <!-- Linha 6: QTDO -->
-                <div class="modal-row row-qtdo">
-                    <div class="modal-cell">
-                        <span class="modal-cell-label">Quantidade</span>
-                        <input class="modal-cell-input" id="modal-qtdo" type="number" min="0" step="any"
-                            placeholder="0">
-                    </div>
+                <div class="modal-actions">
+                    <button class="modal-btn modal-btn-cancelar" onclick="fecharModal()">Cancelar</button>
+                    <button class="modal-btn modal-btn-confirmar" id="modal-btn-confirmar"
+                        onclick="confirmarModal()">Confirmar</button>
                 </div>
 
             </div>
-
-            <!-- GALERIA DE FOTOS (múltiplas) -->
-            <div class="modal-row row-fotos">
-                <div class="modal-cell fotos-cell">
-                    <span class="modal-cell-label">Fotos</span>
-                    <div class="galeria-fotos" id="galeria-fotos"></div>
-                    <button class="btn-adicionar-foto" onclick="document.getElementById('foto-input').click()">+
-                        Adicionar Foto</button>
-                    <input type="file" id="foto-input" accept="image/*" multiple onchange="carregarFotos(this)"
-                        style="display:none">
-                </div>
-            </div>
-
-            <div class="modal-actions">
-                <button class="modal-btn modal-btn-cancelar" onclick="fecharModal()">Cancelar</button>
-                <button class="modal-btn modal-btn-confirmar" id="modal-btn-confirmar"
-                    onclick="confirmarModal()">Confirmar</button>
-            </div>
-
         </div>
-    </div>
 
 </body>
 

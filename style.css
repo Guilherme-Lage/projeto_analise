@@ -518,7 +518,8 @@ td.col-codigo {
 }
 
 .modal-btn-confirmar.ja-conferido {
-    background: #CC0000;
+  background: #0000c8;
+      color: #fff;
 }
 
 .modal-btn-confirmar.ja-conferido:hover {
