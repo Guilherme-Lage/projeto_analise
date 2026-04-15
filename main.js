@@ -2,9 +2,47 @@ let itens = [];
 let ocultar = true;
 let idxModalAtual = -1;
 let ultimaLocacaoClicada = "";
-let ocultarAlertas = false; 
+let ocultarAlertas = false;
 let contextoAnterior = null; // { tipo, valor } — para voltar após confirmar'
-//  MODAL 
+const dbName = "HontecDB";
+const storeName = "estoque";
+
+function abrirDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open("HontecDB", 1);
+
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains("estoque")) {
+                db.createObjectStore("estoque", { keyPath: "id" });
+            }
+        };
+
+        request.onsuccess = (e) => resolve(e.target.result);
+        request.onerror = (e) => reject("Erro ao abrir IndexedDB");
+    });
+}
+
+async function salvarBackup() {
+    try {
+        const db = await abrirDB();
+        const tx = db.transaction("estoque", "readwrite");
+        const store = tx.objectStore("estoque");
+        
+        // Salva o array 'itens' dentro do ID 'backup_atual'
+        await store.put({ id: "backup_atual", dados: itens });
+        
+        return new Promise((resolve) => {
+            tx.oncomplete = () => {
+                console.log("Progresso salvo no IndexedDB");
+                resolve();
+            };
+        });
+    } catch (err) {
+        console.error("Erro ao salvar no IndexedDB:", err);
+    }
+}
+
 function abrirModal(globalIdx) {
     try {
         idxModalAtual = globalIdx;
@@ -87,7 +125,7 @@ function renderizarGaleria(fotos) {
 
     galeria.innerHTML = fotos.map((src, i) => `
         <div class="foto-thumb" title="Clique para remover">
-            <img src="${src}" alt="foto ${i+1}" onclick="removerFoto(${i})">
+            <img src="${src}" alt="foto ${i + 1}" onclick="removerFoto(${i})">
             <button class="foto-remover" onclick="removerFoto(${i})">✕</button>
         </div>
     `).join('');
@@ -103,8 +141,7 @@ function removerFoto(idx) {
 }
 
 function carregarFotos(input) {
-    if (!input.files || input.files.length === 0) return;
-    if (idxModalAtual < 0) return;
+    if (!input.files || input.files.length === 0 || idxModalAtual < 0) return;
 
     const item = itens[idxModalAtual];
     if (!item.fotos) item.fotos = [];
@@ -115,60 +152,62 @@ function carregarFotos(input) {
     arquivos.forEach(arquivo => {
         const reader = new FileReader();
         reader.onload = (e) => {
-            item.fotos.push(e.target.result);
-            lidos++;
-            if (lidos === arquivos.length) {
-                renderizarGaleria(item.fotos);
-                localStorage.setItem('estoque_hontec_backup', JSON.stringify(itens));
-            }
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                // Redimensiona para no máximo 500px (suficiente para ver o produto)
+                const MAX_WIDTH = 500;
+                const scale = MAX_WIDTH / img.width;
+                canvas.width = MAX_WIDTH;
+                canvas.height = img.height * scale;
+
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                // Converte para JPEG com qualidade baixa (0.4) para o texto ficar curto
+                const fotoCompacta = canvas.toDataURL('image/jpeg', 0.4);
+                
+                item.fotos.push(fotoCompacta);
+                lidos++;
+
+                if (lidos === arquivos.length) {
+                    renderizarGaleria(item.fotos);
+                    // Aqui você chama a função do IndexedDB que criamos antes
+                    salvarBackup(); 
+                }
+            };
+            img.src = e.target.result;
         };
         reader.readAsDataURL(arquivo);
     });
 
-    input.value = ''; // Permite selecionar as mesmas fotos novamente
+    input.value = '';
 }
-function confirmarModal() {
+async function confirmarModal() {
     if (idxModalAtual < 0) return;
     const item = itens[idxModalAtual];
 
-    // Captura com segurança
     const elLoc = document.getElementById('modal-locacao');
     const elMarca = document.getElementById('modal-marca');
     const elGtinN = document.getElementById('modal-gtin-novo');
     const elQtd = document.getElementById('modal-qtdo');
 
-    // SALVAMENTO: Só muda a locação se o campo não estiver em branco
-    if (elLoc && elLoc.value.trim() !== "") {
-        item.locacao = elLoc.value.trim().toUpperCase();
-    }
-
+    if (elLoc && elLoc.value.trim() !== "") item.locacao = elLoc.value.trim().toUpperCase();
     if (elMarca) item.marca = elMarca.value.trim().toUpperCase();
     if (elGtinN) item.gtinNovo = elGtinN.value.trim().toUpperCase();
     if (elQtd) item.qtdConferida = elQtd.value !== '' ? parseFloat(elQtd.value) : 0;
 
-    item.conferido = !item.conferido;
+    item.conferido = true; // Define como conferido
 
-    // Persistência no navegador
-    localStorage.setItem('estoque_hontec_backup', JSON.stringify(itens));
+    // ESTA LINHA É A MAIS IMPORTANTE:
+    await salvarBackup(); 
 
-    // --- MUDANÇAS PARA LIMPAR A PESQUISA ---
- // Volta ao contexto anterior (ex: busca de prateleira) ou lista completa
-    ultimaLocacaoClicada = "";
-
-    if (contextoAnterior) {
-        document.getElementById('filtro-tipo').value = contextoAnterior.tipo;
-        document.getElementById('busca').value = contextoAnterior.valor;
-        filtrar();
-    } else {
-        document.getElementById('busca').value = "";
-        document.getElementById('filtro-tipo').value = "todos";
-        renderizarTabela(itens);
-    }
+    // O restante do seu código (atualizar tabela, fechar modal...)
+    renderizarTabela(itens);
     atualizarContador();
     fecharModal();
 }
-
-
 
 
 //  CSV 
@@ -353,7 +392,7 @@ function renderizarTabela(lista) {
 
         // --- LÓGICA DE OCULTAR ---
         const buscaAtiva = document.getElementById('busca').value.trim() !== '';
-        
+
         // Se NÃO houver busca, aplicamos os filtros de ocultar
         if (!buscaAtiva) {
             if (ocultar && item.conferido) {
@@ -410,25 +449,25 @@ function filtrar() {
 
     // Se limpar a busca, resetamos o rastreio de locação clicada
     if (busca === '') {
-        ultimaLocacaoClicada = ""; 
+        ultimaLocacaoClicada = "";
         contextoAnterior = null;
         renderizarTabela(itens);
         return;
     }
 
     const filtrados = itens.filter(i => {
-        const loc   = (i.locacao || '').toLowerCase();
-        const cod   = (i.codigo || '').toLowerCase();
-        const nome  = (i.nome || '').toLowerCase();
+        const loc = (i.locacao || '').toLowerCase();
+        const cod = (i.codigo || '').toLowerCase();
+        const nome = (i.nome || '').toLowerCase();
         const marca = (i.marca || '').toLowerCase();
-         if (tipo === 'prateleira') return loc.includes(busca);
-        const gtin  = (i.gtinOriginal || '').toLowerCase() + (i.gtinNovo || '').toLowerCase();
+        if (tipo === 'prateleira') return loc.includes(busca);
+        const gtin = (i.gtinOriginal || '').toLowerCase() + (i.gtinNovo || '').toLowerCase();
 
         if (tipo === 'locacao') return loc.includes(busca);
-        if (tipo === 'codigo')  return cod.includes(busca);
-        if (tipo === 'nome')    return nome.includes(busca);
-        if (tipo === 'marca')   return marca.includes(busca);
-        if (tipo === 'gtin')    return gtin.includes(busca);
+        if (tipo === 'codigo') return cod.includes(busca);
+        if (tipo === 'nome') return nome.includes(busca);
+        if (tipo === 'marca') return marca.includes(busca);
+        if (tipo === 'gtin') return gtin.includes(busca);
 
         // Busca Global
         return loc.includes(busca) || cod.includes(busca) || nome.includes(busca) || marca.includes(busca) || gtin.includes(busca);
@@ -448,56 +487,111 @@ function alternarConferidos() {
         tr.style.display = (ocultar && itens[idx]?.conferido) ? 'none' : '';
     });
 }
-
 function exportarCSV() {
     if (itens.length === 0) { alert('Carregue um arquivo primeiro!'); return; }
 
-    const linhas = ['STATUS|MARCA|CODIGO|NOME|QUANTIDADE|QTD_CONFERIDA|GTIN_ANTIGO|GTIN_NOVO|LOCACAO|QTD_FOTOS|FOTOS'];
-    itens.forEach(i => {
-        const qtdC = i.qtdConferida != null ? i.qtdConferida : '';
-        const fotos = (i.fotos && i.fotos.length > 0) ? i.fotos.join(';;') : '';
-        const qtdFotos = i.fotos ? i.fotos.length : 0;
-        linhas.push(`${i.conferido ? 'OK' : 'PENDENTE'}|${i.marca}|${i.codigo}|${i.nome}|${i.qtd}|${qtdC}|${i.gtinAntigo || ''}|${i.gtinNovo || ''}|${i.locacao}|${qtdFotos}|${fotos}`);
-    });
+    // Definimos quantas colunas de fotos queremos (ex: até 5 fotos por item)
+    const maxFotos = 5; 
+    
+    // Monta o cabeçalho
+    let colunas = ['STATUS', 'MARCA', 'CODIGO', 'NOME', 'QTD_SISTEMA', 'QTD_CONFERIDA', 'LOCACAO'];
+    for (let i = 1; i <= maxFotos; i++) {
+        colunas.push(`FOTO_${i}`);
+    }
+    
+    const linhas = [colunas.join('|')];
 
-    const blob = new Blob([linhas.join('\n')], { type: 'text/plain;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'estoque_conferido.csv';
-    link.click();
-}
-window.onload = () => {
-    try {
-        const backup = localStorage.getItem('estoque_hontec_backup');
-        if (backup) {
-            if (confirm("Encontramos uma conferência em andamento. Deseja restaurar os dados?")) {
-                itens = JSON.parse(backup);
-                renderizarTabela(itens);
-                atualizarContador();
-                document.getElementById('btn-limpar').style.display = 'inline-block';
-                const elInfo = document.getElementById('info-arquivo');
-                if (elInfo) elInfo.textContent = "Dados restaurados da memória local";
+    itens.forEach(item => {
+        const qtdC = item.qtdConferida != null ? item.qtdConferida : '';
+        
+        // Dados básicos
+        let registro = [
+            item.conferido ? 'OK' : 'PENDENTE',
+            item.marca || '',
+            item.codigo,
+            `"${item.nome}"`, // Aspas para proteger o nome
+            item.qtd,
+            qtdC,
+            item.locacao
+        ];
+
+        // Adiciona as fotos nas colunas específicas
+        for (let i = 0; i < maxFotos; i++) {
+            if (item.fotos && item.fotos[i]) {
+                // Colocamos aspas duplas pois o Base64 é um texto gigante
+                registro.push(`"${item.fotos[i]}"`);
+            } else {
+                registro.push('""'); // Coluna vazia se não houver foto
             }
         }
+
+        linhas.push(registro.join('|'));
+    });
+
+    // Gera o arquivo
+    const csvContent = "\uFEFF" + linhas.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `estoque_conferido.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+window.onload = async () => {
+    try {
+        // 1. Abre a conexão com o banco
+        const db = await abrirDB();
+        
+        // 2. Cria uma transação de leitura
+        const tx = db.transaction("estoque", "readonly");
+        const store = tx.objectStore("estoque");
+        
+        // 3. Busca o backup
+        const request = store.get("backup_atual");
+
+        request.onsuccess = () => {
+            const resultado = request.result;
+            
+            // 4. Se encontrou dados e a lista de itens está vazia (primeiro acesso)
+            if (resultado && resultado.dados && resultado.dados.length > 0) {
+                if (confirm(`Encontramos ${resultado.dados.length} itens salvos. Deseja restaurar o progresso?`)) {
+                    itens = resultado.dados;
+                    renderizarTabela(itens);
+                    atualizarContador();
+                    
+                    // Mostra os botões de controle
+                    document.getElementById('btn-limpar').style.display = 'inline-block';
+                    document.getElementById('contador').style.display = 'block';
+                    
+                    const elInfo = document.getElementById('info-arquivo');
+                    if (elInfo) {
+                        elInfo.style.display = 'block';
+                        elInfo.textContent = "Dados restaurados da memória local (IndexedDB)";
+                    }
+                }
+            }
+        };
+        
+        request.onerror = () => console.error("Erro ao buscar backup no IndexedDB");
+
     } catch (e) {
-        console.warn("Erro ao restaurar backup:", e);
-        localStorage.removeItem('estoque_hontec_backup');
+        console.error("Erro crítico na restauração:", e);
     }
 };
-function limpar() {
+
+async function limpar() {
     if (!confirm("Isso apagará todo o progresso atual. Confirmar?")) return;
-    localStorage.removeItem('estoque_hontec_backup');
 
-    itens = [];
-    document.getElementById('corpo').innerHTML = '<tr><td colspan="5" class="estado-vazio">Nenhum arquivo carregado — clique em Abrir CSV</td></tr>';
-    document.getElementById('info-arquivo').textContent = 'Nenhum arquivo carregado';
-    document.getElementById('contador').style.display = 'none';
-    document.getElementById('btn-limpar').style.display = 'none';
-    document.getElementById('busca').value = '';
-    document.getElementById('entrada-arquivo').value = '';
+    const db = await abrirDB();
+    const tx = db.transaction("estoque", "readwrite");
+    tx.objectStore("estoque").delete("backup_atual");
+
+    tx.oncomplete = () => {
+        location.reload();
+    };
 }
-
-
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') fecharModal();
 });
@@ -516,7 +610,7 @@ function gerenciarCliqueItem(globalIdx) {
         if (tipoAtual === 'prateleira' && valorAtual !== '') {
             contextoAnterior = { tipo: tipoAtual, valor: valorAtual };
         } else if (tipoAtual !== 'locacao') {
-            // qualquer outra busca ativa: salva também
+
             contextoAnterior = valorAtual !== '' ? { tipo: tipoAtual, valor: valorAtual } : null;
         }
 
@@ -525,7 +619,7 @@ function gerenciarCliqueItem(globalIdx) {
         campoBusca.value = item.locacao;
         filtrar();
     } else {
-        // 2º clique: abre modal
+
         abrirModal(globalIdx);
     }
 }
@@ -535,26 +629,27 @@ function voltarListaCompleta() {
     ultimaLocacaoClicada = "";
     contextoAnterior = null;
     renderizarTabela(itens);
-}   
+}
 
 function alternarAlertas() {
     ocultarAlertas = !ocultarAlertas;
     const btn = document.getElementById('btn-ocultar-alertas');
-    
+
     // Muda o texto e destaca o botão quando ativo
     btn.textContent = ocultarAlertas ? 'Mostrar Alertas' : 'Ocultar Alertas';
     btn.style.backgroundColor = ocultarAlertas ? '#fff9c4' : '#fff';
     btn.style.color = '#000';
-
     renderizarTabela(itens);
 }
-const inputGtin = document.getElementById('gtin'); // Use o ID real do seu campo GTIN
-const inputQuantidade = document.getElementById('quantidade'); // Use o ID real do campo Qtd
+const inputGtin = document.getElementById('modal-gtin-novo'); 
+const inputQuantidade = document.getElementById('modal-qtdo');
 
-inputGtin.addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-        e.preventDefault(); // Impede que o Enter envie o formulário antes da hora
-        inputQuantidade.focus();
-        inputQuantidade.select(); // Opcional: já seleciona o texto para facilitar a edição
-    }
-});
+if (inputGtin && inputQuantidade) {
+    inputGtin.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            inputQuantidade.focus();
+            inputQuantidade.select();
+        }
+    });
+}
