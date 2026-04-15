@@ -48,19 +48,26 @@ function abrirModal(globalIdx) {
         idxModalAtual = globalIdx;
         const item = itens[globalIdx];
 
-        // 1. Data e hora
-        const agora = new Date();
-        const dt = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        document.getElementById('modal-datetime').textContent = dt;
+        // 1. Lógica de Data e Hora (FIXA se já existe, senão ATUAL)
+        const elDataModal = document.getElementById('modal-datetime');
+        if (item.dataHoraRegistro) {
+            // Se o item já foi confirmado ou alterado, exibe a data que ficou salva
+            elDataModal.textContent = item.dataHoraRegistro;
+        } else {
+            // Se é a primeira vez, mostra o relógio de agora
+            const agora = new Date();
+            const dt = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            elDataModal.textContent = dt;
+        }
 
-        // 2. Preencher Locação (RECUPERA O QUE ESTÁ NA TABELA)
+        // 2. Preencher Locação
         const elLoc = document.getElementById('modal-locacao');
-        if (elLoc) elLoc.value = item.locacao || ''; // Aqui ele volta a mostrar o valor atual
+        if (elLoc) elLoc.value = item.locacao || '';
 
         // 3. Preencher Código e Nome
         document.getElementById('modal-cod-nome').textContent = `${item.codigo} — ${item.nome}`;
 
-        // 4. Marca e GTIN Novo
+        // 4. Marca e GTIN Novo (Recupera o que já foi digitado se houver)
         document.getElementById('modal-marca').value = item.marca || '';
         document.getElementById('modal-gtin-novo').value = item.gtinNovo || '';
 
@@ -68,24 +75,26 @@ function abrirModal(globalIdx) {
         const elGtinAntigo = document.getElementById('modal-gtin-antigo');
         if (elGtinAntigo) elGtinAntigo.textContent = item.gtinAntigo || '---';
 
-        // 6. Quantidade (ESTA SIM SEMPRE VEM ZERADA)
+        // 6. Quantidade (Recupera o valor salvo)
         const elQtd = document.getElementById('modal-qtdo');
         if (elQtd) elQtd.value = item.qtdConferida != null ? item.qtdConferida : '';
 
         // 7. Fotos — renderiza galeria
         renderizarGaleria(item.fotos || []);
 
-        // 8. Botão Confirmar
+        // 8. Botão Confirmar/Alterar
         const btnConf = document.getElementById('modal-btn-confirmar');
         if (item.conferido) {
-            btnConf.textContent = 'Desmarcar';
-            btnConf.classList.add('ja-conferido');
+            // Se já foi feito, o botão vira ALTERAR
+            btnConf.textContent = 'ALTERAR';
+            btnConf.classList.add('ja-conferido'); 
         } else {
-            btnConf.textContent = 'Confirmar';
+            // Se for novo, continua CONFIRMAR
+            btnConf.textContent = 'CONFIRMAR';
             btnConf.classList.remove('ja-conferido');
         }
 
-        // 9. Abrir e Focar na Quantidade
+        // 9. Abrir Modal e dar Foco
         document.getElementById('modal-overlay').classList.add('aberto');
         setTimeout(() => {
             const elGtinNovo = document.getElementById('modal-gtin-novo');
@@ -99,6 +108,7 @@ function abrirModal(globalIdx) {
         console.error("Erro ao abrir modal:", erro);
     }
 }
+
 
 
 
@@ -228,16 +238,24 @@ function renderizarLog() {
     const lista = document.getElementById('log-lista');
     lista.innerHTML = historicoLog.map(l => `<div class="log-item">${l.msg}</div>`).join('');
 }
-
 async function confirmarModal() {
     try {
         if (idxModalAtual < 0) return;
         const item = itens[idxModalAtual];
+        // Dentro de confirmarModal
+        const elGtinN = document.getElementById('modal-gtin-novo'); // Pega o campo do HTML
+        const elMarca = document.getElementById('modal-marca');
+
+        if (elGtinN) item.gtinNovo = elGtinN.value.trim().toUpperCase(); // SALVA no objeto item
+        if (elMarca) item.marca = elMarca.value.trim().toUpperCase();
 
         const elQtd = document.getElementById('modal-qtdo');
         if (elQtd) item.qtdConferida = elQtd.value !== '' ? parseFloat(elQtd.value) : 0;
 
-        item.conferido = !item.conferido;
+        const agora = new Date();
+        item.dataConferencia = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        item.conferido = true;
 
         try { adicionarLog(item); } catch (e) { console.log("Erro no log"); }
 
@@ -262,6 +280,7 @@ async function confirmarModal() {
         fecharModal();
     }
 }
+
 //  CSV 
 
 function carregarCSV(input) {
