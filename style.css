@@ -749,14 +749,17 @@ tbody tr.loc-destaque.conferido td {
     width: 100%;
     flex: 1;
 }
+
 tbody tr.em-alerta {
-    background: #fff9c4 !important; /* Amarelo suave */
+    background: #fff9c4 !important;
+    /* Amarelo suave */
 }
 
 /* Mantém o verde forte se o item já foi finalizado */
 tbody tr.conferido {
     background: #edf7f0 !important;
 }
+
 .quadrado.status-pendente {
     background: #ffeb3b;
     border-color: #fbc02d;
@@ -770,8 +773,11 @@ tbody tr.conferido {
     border-color: #2d7a4a;
     color: #fff;
 }
+
 /* ── GALERIA DE FOTOS NO MODAL ── */
-.row-fotos { grid-template-columns: 1fr; }
+.row-fotos {
+    grid-template-columns: 1fr;
+}
 
 .fotos-cell {
     padding: 10px 14px;
@@ -804,7 +810,9 @@ tbody tr.conferido {
     transition: border-color 0.15s;
 }
 
-.foto-thumb:hover { border-color: #CC0000; }
+.foto-thumb:hover {
+    border-color: #CC0000;
+}
 
 .foto-thumb img {
     width: 100%;
@@ -819,7 +827,7 @@ tbody tr.conferido {
     right: 2px;
     width: 18px;
     height: 18px;
-    background: rgba(204,0,0,0.85);
+    background: rgba(204, 0, 0, 0.85);
     color: #fff;
     border: none;
     border-radius: 50%;
@@ -833,7 +841,9 @@ tbody tr.conferido {
     padding: 0;
 }
 
-.foto-thumb:hover .foto-remover { opacity: 1; }
+.foto-thumb:hover .foto-remover {
+    opacity: 1;
+}
 
 .btn-adicionar-foto {
     font-family: 'IBM Plex Mono', monospace;
@@ -868,6 +878,7 @@ tbody tr.conferido {
 .log-header {
     padding: 8px 12px;
     background: #f7f5f2;
+    border-radius: 4px;
     cursor: pointer;
     display: flex;
     justify-content: space-between;
@@ -892,6 +903,10 @@ tbody tr.conferido {
     justify-content: space-between;
 }
 
-.log-item:nth-child(odd) { background: #fafafa; }
+.log-item:nth-child(odd) {
+    background: #fafafa;
+}
 
-.log-item b { color: #00009C; }
+.log-item b {
+    color: #00009C;
+}

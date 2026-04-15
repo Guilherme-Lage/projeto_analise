@@ -234,23 +234,32 @@ async function confirmarModal() {
         if (idxModalAtual < 0) return;
         const item = itens[idxModalAtual];
 
-        // ... seus inputs (elLoc, elMarca, etc) ...
         const elQtd = document.getElementById('modal-qtdo');
         if (elQtd) item.qtdConferida = elQtd.value !== '' ? parseFloat(elQtd.value) : 0;
 
         item.conferido = !item.conferido;
 
-        // Tenta adicionar o log, mas não deixa travar se der erro
         try { adicionarLog(item); } catch (e) { console.log("Erro no log"); }
 
         await salvarBackup();
         renderizarTabela(itens);
         atualizarContador();
-        fecharModal(); // Agora ele vai chegar aqui com certeza
+        fecharModal();
 
+        ultimaLocacaoClicada = "";
+
+        if (contextoAnterior) {
+            document.getElementById('filtro-tipo').value = contextoAnterior.tipo;
+            document.getElementById('busca').value = contextoAnterior.valor;
+            filtrar();
+        } else {
+            document.getElementById('busca').value = "";
+            document.getElementById('filtro-tipo').value = "todos";
+            renderizarTabela(itens);
+        }
     } catch (erro) {
         console.error("Erro ao confirmar:", erro);
-        fecharModal(); // Fecha mesmo se der erro crítico
+        fecharModal();
     }
 }
 //  CSV 
@@ -264,7 +273,6 @@ function carregarCSV(input) {
         // Tenta UTF-8 primeiro; se vier com caracteres estranhos, tenta latin-1
         processarCSV(e.target.result, arquivo.name);
     };
-    // Tenta latin-1 para arquivos brasileiros com acentos
     leitor.readAsText(arquivo, 'ISO-8859-1');
 }
 
@@ -273,7 +281,6 @@ function limparAspas(val) {
     return val.replace(/^"|"$/g, '').trim();
 }
 function parseLinhaCsv(linha, sep) {
-    // Parser robusto que lida com aspas, separadores dentro de aspas, etc.
     const resultado = [];
     let campo = '';
     let dentroAspas = false;
@@ -294,7 +301,6 @@ function parseLinhaCsv(linha, sep) {
 }
 
 function splitLinhasCSV(texto) {
-    // Reconstrói linhas que têm quebra de linha DENTRO de aspas (campo multiline)
     const linhas = [];
     let atual = '';
     let dentroAspas = false;
@@ -320,13 +326,11 @@ function processarCSV(texto, nomeArquivo) {
         const linhas = splitLinhasCSV(texto);
         if (linhas.length < 2) { alert('Arquivo CSV vazio ou inválido.'); return; }
 
-        // Detecta separador
         const sep = linhas[0].includes('|') ? '|' : (linhas[0].includes(';') ? ';' : ',');
 
         const cabecalho = parseLinhaCsv(linhas[0], sep).map(v => v.toUpperCase().trim());
         const idx = (nome) => cabecalho.findIndex(c => c.includes(nome.toUpperCase()));
 
-        // Detecta se é CSV exportado (tem STATUS + LOCACAO + CODIGO) ou original do sistema
         const ehExportado = idx('STATUS') >= 0 && idx('LOCACAO') >= 0 && idx('CODIGO') >= 0;
 
         itens = [];
@@ -442,7 +446,6 @@ function renderizarTabela(lista) {
         return;
     }
 
-    // 1. Identifica locações que já tiveram pelo menos um item conferido
     const locacoesIniciadas = [...new Set(
         itens.filter(i => i.conferido).map(i => i.locacao)
     )];
@@ -454,12 +457,10 @@ function renderizarTabela(lista) {
 
         let classeQuadrado = "";
         let iconeStatus = "";
-        
-        // 2. Determina o estado do item
+
         const estaConferido = item.conferido === true;
         const ehAlerta = !estaConferido && locacoesIniciadas.includes(item.locacao);
 
-        // 3. Aplica classes visuais
         if (estaConferido) {
             tr.classList.add('conferido');
             classeQuadrado = "ok";
@@ -470,22 +471,18 @@ function renderizarTabela(lista) {
             iconeStatus = "!";
         }
 
-        // 4. LÓGICA DE OCULTAR (Só funciona se a busca estiver vazia)
         const buscaAtiva = document.getElementById('busca').value.trim() !== '';
-        
+
         if (!buscaAtiva) {
-            // Se "Ocultar Conferidos" (variável ocultar) estiver true e item estiver OK
             if (ocultar && estaConferido) {
                 tr.style.display = 'none';
             }
-            
-            // Se "Ocultar Alertas" (variável ocultarAlertas) estiver true e item for Alerta
+
             if (ocultarAlertas && ehAlerta) {
                 tr.style.display = 'none';
             }
         }
 
-        // 5. Clique e Conteúdo
         tr.onclick = () => gerenciarCliqueItem(globalIdx);
 
         tr.innerHTML = `
@@ -503,246 +500,235 @@ function renderizarTabela(lista) {
         corpo.appendChild(tr);
     });
 
-    // Atualiza os números no topo
     if (typeof atualizarContador === "function") atualizarContador();
 }
 
 
 function atualizarContador() {
-            const conf = itens.filter(i => i.conferido).length;
-            const total = itens.length;
-            document.getElementById('cnt-conf').textContent = conf;
-            document.getElementById('cnt-total').textContent = total;
+    const conf = itens.filter(i => i.conferido).length;
+    const total = itens.length;
+    document.getElementById('cnt-conf').textContent = conf;
+    document.getElementById('cnt-total').textContent = total;
 
-            const el = document.getElementById('contador');
-            if (total === 0) return;
-            if (conf === 0) {
-                el.style.background = '#fff0f0'; el.style.color = '#CC0000'; el.style.borderColor = '#CC0000';
-            } else if (conf === total) {
-                el.style.background = '#edf7f0'; el.style.color = '#2d7a4a'; el.style.borderColor = '#2d7a4a';
-            } else {
-                el.style.background = '#fff9eb'; el.style.color = '#f39c12'; el.style.borderColor = '#f39c12';
-            }
-        }
+    const el = document.getElementById('contador');
+    if (total === 0) return;
+    if (conf === 0) {
+        el.style.background = '#fff0f0'; el.style.color = '#CC0000'; el.style.borderColor = '#CC0000';
+    } else if (conf === total) {
+        el.style.background = '#edf7f0'; el.style.color = '#2d7a4a'; el.style.borderColor = '#2d7a4a';
+    } else {
+        el.style.background = '#fff9eb'; el.style.color = '#f39c12'; el.style.borderColor = '#f39c12';
+    }
+}
 
 function filtrar() {
-            const buscaRaw = document.getElementById('busca').value.trim();
-            const busca = buscaRaw.toLowerCase();
-            const tipo = document.getElementById('filtro-tipo').value;
+    const buscaRaw = document.getElementById('busca').value.trim();
+    const busca = buscaRaw.toLowerCase();
+    const tipo = document.getElementById('filtro-tipo').value;
 
-            // Se limpar a busca, resetamos o rastreio de locação clicada
-            if (busca === '') {
-                ultimaLocacaoClicada = "";
-                contextoAnterior = null;
-                renderizarTabela(itens);
-                return;
-            }
+    // Se limpar a busca, resetamos o rastreio de locação clicada
+    if (busca === '') {
+        ultimaLocacaoClicada = "";
+        contextoAnterior = null;
+        renderizarTabela(itens);
+        return;
+    }
 
-            const filtrados = itens.filter(i => {
-                const loc = (i.locacao || '').toLowerCase();
-                const cod = (i.codigo || '').toLowerCase();
-                const nome = (i.nome || '').toLowerCase();
-                const marca = (i.marca || '').toLowerCase();
-                if (tipo === 'prateleira') return loc.includes(busca);
-                const gtin = (i.gtinOriginal || '').toLowerCase() + (i.gtinNovo || '').toLowerCase();
+    const filtrados = itens.filter(i => {
+        const loc = (i.locacao || '').toLowerCase();
+        const cod = (i.codigo || '').toLowerCase();
+        const nome = (i.nome || '').toLowerCase();
+        const marca = (i.marca || '').toLowerCase();
+        if (tipo === 'prateleira') return loc.includes(busca);
+        const gtin = (i.gtinOriginal || '').toLowerCase() + (i.gtinNovo || '').toLowerCase();
 
-                if (tipo === 'locacao') return loc.includes(busca);
-                if (tipo === 'codigo') return cod.includes(busca);
-                if (tipo === 'nome') return nome.includes(busca);
-                if (tipo === 'marca') return marca.includes(busca);
-                if (tipo === 'gtin') return gtin.includes(busca);
+        if (tipo === 'locacao') return loc.includes(busca);
+        if (tipo === 'codigo') return cod.includes(busca);
+        if (tipo === 'nome') return nome.includes(busca);
+        if (tipo === 'marca') return marca.includes(busca);
+        if (tipo === 'gtin') return gtin.includes(busca);
 
-                // Busca Global
-                return loc.includes(busca) || cod.includes(busca) || nome.includes(busca) || marca.includes(busca) || gtin.includes(busca);
-            });
+        // Busca Global
+        return loc.includes(busca) || cod.includes(busca) || nome.includes(busca) || marca.includes(busca) || gtin.includes(busca);
+    });
 
-            renderizarTabela(filtrados);
-        }
+    renderizarTabela(filtrados);
+}
 
 
 
 function alternarConferidos() {
-            ocultar = !ocultar;
-            document.getElementById('btn-ocultar').textContent = ocultar ? 'Mostrar Todos' : 'Ocultar Conferidos';
-            document.querySelectorAll('#corpo tr').forEach(tr => {
-                const idx = parseInt(tr.id?.replace('linha-', ''));
-                if (isNaN(idx)) return;
-                tr.style.display = (ocultar && itens[idx]?.conferido) ? 'none' : '';
-            });
-        }
+    ocultar = !ocultar;
+    document.getElementById('btn-ocultar').textContent = ocultar ? 'Mostrar Todos' : 'Ocultar Conferidos';
+    document.querySelectorAll('#corpo tr').forEach(tr => {
+        const idx = parseInt(tr.id?.replace('linha-', ''));
+        if (isNaN(idx)) return;
+        tr.style.display = (ocultar && itens[idx]?.conferido) ? 'none' : '';
+    });
+}
 function exportarCSV() {
-            if (itens.length === 0) { alert('Carregue um arquivo primeiro!'); return; }
+    if (itens.length === 0) { alert('Carregue um arquivo primeiro!'); return; }
 
-            // Definimos quantas colunas de fotos queremos (ex: até 5 fotos por item)
-            const maxFotos = 5;
+    const maxFotos = 5;
 
-            // Monta o cabeçalho
-            let colunas = ['STATUS', 'MARCA', 'CODIGO', 'NOME', 'QTD_SISTEMA', 'QTD_CONFERIDA', 'LOCACAO', 'GTIN_ANTIGO', 'GTIN_NOVO'];
-            for (let i = 1; i <= maxFotos; i++) {
-                colunas.push(`FOTO_${i}`);
-            }
-
-            const linhas = [colunas.join('|')];
-
-            itens.forEach(item => {
-                const qtdC = item.qtdConferida != null ? item.qtdConferida : '';
-
-                // Dados básicos
-                let registro = [
-                    item.conferido ? 'OK' : 'PENDENTE',
-                    item.marca || '',
-                    item.codigo,
-                    `"${item.nome}"`,
-                    item.qtd,
-                    qtdC,
-                    item.locacao,
-                    item.gtinAntigo || '',
-                    item.gtinNovo || ''
-                ];
-
-                // Adiciona as fotos nas colunas específicas
-                for (let i = 0; i < maxFotos; i++) {
-                    if (item.fotos && item.fotos[i]) {
-                        // Colocamos aspas duplas pois o Base64 é um texto gigante
-                        registro.push(`"${item.fotos[i]}"`);
-                    } else {
-                        registro.push('""'); // Coluna vazia se não houver foto
-                    }
-                }
-
-                linhas.push(registro.join('|'));
-            });
-
-            // Gera o arquivo
-            const csvContent = "\uFEFF" + linhas.join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `estoque_conferido.csv`;
-            link.click();
-            URL.revokeObjectURL(url);
-        }
-window.onload = async () => {
-            try {
-                // 1. Abre a conexão com o banco
-                const db = await abrirDB();
-
-                // 2. Cria uma transação de leitura
-                const tx = db.transaction("estoque", "readonly");
-                const store = tx.objectStore("estoque");
-
-                // 3. Busca o backup
-                const request = store.get("backup_atual");
-
-                request.onsuccess = () => {
-                    const resultado = request.result;
-
-                    // 4. Se encontrou dados e a lista de itens está vazia (primeiro acesso)
-                    if (resultado && resultado.dados && resultado.dados.length > 0) {
-                        if (confirm(`Encontramos ${resultado.dados.length} itens salvos. Deseja restaurar o progresso?`)) {
-                            itens = resultado.dados;
-                            renderizarTabela(itens);
-                            atualizarContador();
-
-                            // Mostra os botões de controle
-                            document.getElementById('btn-limpar').style.display = 'inline-block';
-                            document.getElementById('contador').style.display = 'block';
-
-                            const elInfo = document.getElementById('info-arquivo');
-                            if (elInfo) {
-                                elInfo.style.display = 'block';
-                                elInfo.textContent = "Dados restaurados da memória local (IndexedDB)";
-                            }
-                        }
-                    }
-                };
-
-                request.onerror = () => console.error("Erro ao buscar backup no IndexedDB");
-
-            } catch (e) {
-                console.error("Erro crítico na restauração:", e);
-            }
-        };
-
-    async function limpar() {
-        if (!confirm("Isso apagará todo o progresso atual. Confirmar?")) return;
-
-        const db = await abrirDB();
-        const tx = db.transaction("estoque", "readwrite");
-        tx.objectStore("estoque").delete("backup_atual");
-
-        tx.oncomplete = () => {
-            location.reload();
-        };
+    let colunas = ['STATUS', 'MARCA', 'CODIGO', 'NOME', 'QTD_SISTEMA', 'QTD_CONFERIDA', 'LOCACAO', 'GTIN_ANTIGO', 'GTIN_NOVO'];
+    for (let i = 1; i <= maxFotos; i++) {
+        colunas.push(`FOTO_${i}`);
     }
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') fecharModal();
+
+    const linhas = [colunas.join('|')];
+
+    itens.forEach(item => {
+        const qtdC = item.qtdConferida != null ? item.qtdConferida : '';
+
+        let registro = [
+            item.conferido ? 'OK' : 'PENDENTE',
+            item.marca || '',
+            item.codigo,
+            `"${item.nome}"`,
+            item.qtd,
+            qtdC,
+            item.locacao,
+            item.gtinAntigo || '',
+            item.gtinNovo || ''
+        ];
+
+        for (let i = 0; i < maxFotos; i++) {
+            if (item.fotos && item.fotos[i]) {
+                registro.push(`"${item.fotos[i]}"`);
+            } else {
+                registro.push('""');
+            }
+        }
+
+        linhas.push(registro.join('|'));
     });
 
-    function gerenciarCliqueItem(globalIdx) {
-        const item = itens[globalIdx];
-        const campoBusca = document.getElementById('busca');
-        const seletorFiltro = document.getElementById('filtro-tipo');
+    // Gera o arquivo
+    const csvContent = "\uFEFF" + linhas.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
 
-        if (ultimaLocacaoClicada !== item.locacao) {
-            // 1º clique: salva contexto atual ANTES de mudar, depois filtra por locação
-            const tipoAtual = seletorFiltro.value;
-            const valorAtual = campoBusca.value.trim();
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `estoque_conferido.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+window.onload = async () => {
+    try {
 
-            // Só salva se for busca de prateleira (para poder voltar)
-            if (tipoAtual === 'prateleira' && valorAtual !== '') {
-                contextoAnterior = { tipo: tipoAtual, valor: valorAtual };
-            } else if (tipoAtual !== 'locacao') {
+        const db = await abrirDB();
 
-                contextoAnterior = valorAtual !== '' ? { tipo: tipoAtual, valor: valorAtual } : null;
+        const tx = db.transaction("estoque", "readonly");
+        const store = tx.objectStore("estoque");
+
+
+        const request = store.get("backup_atual");
+
+        request.onsuccess = () => {
+            const resultado = request.result;
+
+            if (resultado && resultado.dados && resultado.dados.length > 0) {
+                if (confirm(`Encontramos ${resultado.dados.length} itens salvos. Deseja restaurar o progresso?`)) {
+                    itens = resultado.dados;
+                    renderizarTabela(itens);
+                    atualizarContador();
+
+                    // Mostra os botões de controle
+                    document.getElementById('btn-limpar').style.display = 'inline-block';
+                    document.getElementById('contador').style.display = 'block';
+
+                    const elInfo = document.getElementById('info-arquivo');
+                    if (elInfo) {
+                        elInfo.style.display = 'block';
+                        elInfo.textContent = "Dados restaurados da memória local (IndexedDB)";
+                    }
+                }
             }
+        };
 
-            ultimaLocacaoClicada = item.locacao;
-            seletorFiltro.value = "locacao";
-            campoBusca.value = item.locacao;
-            filtrar();
-        } else {
+        request.onerror = () => console.error("Erro ao buscar backup no IndexedDB");
 
-            abrirModal(globalIdx);
-        }
+    } catch (e) {
+        console.error("Erro crítico na restauração:", e);
     }
-    function voltarListaCompleta() {
-        document.getElementById('busca').value = "";
-        document.getElementById('filtro-tipo').value = "todos";
-        ultimaLocacaoClicada = "";
-        contextoAnterior = null;
+};
+
+async function limpar() {
+    if (!confirm("Isso apagará todo o progresso atual. Confirmar?")) return;
+
+    const db = await abrirDB();
+    const tx = db.transaction("estoque", "readwrite");
+    tx.objectStore("estoque").delete("backup_atual");
+
+    tx.oncomplete = () => {
+        location.reload();
+    };
+}
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') fecharModal();
+});
+
+function gerenciarCliqueItem(globalIdx) {
+    const item = itens[globalIdx];
+    const campoBusca = document.getElementById('busca');
+    const seletorFiltro = document.getElementById('filtro-tipo');
+
+    if (ultimaLocacaoClicada !== item.locacao) {
+
+        const tipoAtual = seletorFiltro.value;
+        const valorAtual = campoBusca.value.trim();
+
+        if (tipoAtual === 'prateleira' && valorAtual !== '') {
+            contextoAnterior = { tipo: tipoAtual, valor: valorAtual };
+        } else if (tipoAtual !== 'locacao') {
+
+            contextoAnterior = valorAtual !== '' ? { tipo: tipoAtual, valor: valorAtual } : null;
+        }
+
+        ultimaLocacaoClicada = item.locacao;
+        seletorFiltro.value = "locacao";
+        campoBusca.value = item.locacao;
+        filtrar();
+    } else {
+
+        abrirModal(globalIdx);
+    }
+}
+function voltarListaCompleta() {
+    document.getElementById('busca').value = "";
+    document.getElementById('filtro-tipo').value = "todos";
+    ultimaLocacaoClicada = "";
+    contextoAnterior = null;
+    renderizarTabela(itens);
+}
+function alternarAlertas() {
+    ocultarAlertas = !ocultarAlertas; // Inverte o valor (true/false)
+
+    const btn = document.getElementById('btn-ocultar-alertas');
+    if (btn) {
+        btn.textContent = ocultarAlertas ? 'Mostrar Alertas' : 'Ocultar Alertas';
+
+    }
+
+    const buscaVal = document.getElementById('busca').value.trim();
+    if (buscaVal === "") {
         renderizarTabela(itens);
+    } else {
+        filtrar(); // Se houver busca, re-filtra para aplicar a regra
     }
-    function alternarAlertas() {
-        ocultarAlertas = !ocultarAlertas; // Inverte o valor (true/false)
+}
 
-        const btn = document.getElementById('btn-ocultar-alertas');
-        if (btn) {
-            btn.textContent = ocultarAlertas ? 'Mostrar Alertas' : 'Ocultar Alertas';
-    
+const inputGtin = document.getElementById('modal-gtin-novo');
+const inputQuantidade = document.getElementById('modal-qtdo');
+
+if (inputGtin && inputQuantidade) {
+    inputGtin.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            inputQuantidade.focus();
+            inputQuantidade.select();
         }
-
-        // IMPORTANTE: Se você estiver usando uma lista filtrada, 
-        // passe a lista atual, se não, passe 'itens'
-        const buscaVal = document.getElementById('busca').value.trim();
-        if (buscaVal === "") {
-            renderizarTabela(itens);
-        } else {
-            filtrar(); // Se houver busca, re-filtra para aplicar a regra
-        }
-    }
-
-    const inputGtin = document.getElementById('modal-gtin-novo');
-    const inputQuantidade = document.getElementById('modal-qtdo');
-
-    if (inputGtin && inputQuantidade) {
-        inputGtin.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                inputQuantidade.focus();
-                inputQuantidade.select();
-            }
-        });
-    }
+    });
+}

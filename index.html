@@ -14,7 +14,15 @@
 
     <div class="container">
         <h1>Analise Estoque Hontec</h1>
-        <div class="log-container">
+      
+        <div class="linha-botoes">
+            <button class="botao" onclick="document.getElementById('entrada-arquivo').click()">Abrir Arquivo</button>
+            <button class="botao" id="btn-ocultar" onclick="alternarConferidos()">Mostrar todos</button>
+            <button class="botao" id="btn-ocultar-alertas" onclick="alternarAlertas()">Ocultar Alertas</button>
+            <button class="botao" onclick="exportarCSV()">⬇ Exportar</button>
+            <button class="botao" id="btn-limpar" onclick="limpar()" style="display:none">Novo</button>
+        </div>
+  <div class="log-container">
             <div class="log-header" id="log-header">
                 <span>🕒 ÚLTIMAS AÇÕES</span>
                 <span id="log-seta">▼</span>
@@ -23,14 +31,6 @@
                 style="display:none; max-height: 120px; overflow-y: auto; border:1px solid #1a1a1a; border-top:none; background:#fff; font-size:11px;">
                 <!-- Itens aparecerão aqui -->
             </div>
-        </div>
-
-        <div class="linha-botoes">
-            <button class="botao" onclick="document.getElementById('entrada-arquivo').click()">Abrir Arquivo</button>
-            <button class="botao" id="btn-ocultar" onclick="alternarConferidos()">Mostrar todos</button>
-            <button class="botao" id="btn-ocultar-alertas" onclick="alternarAlertas()">Ocultar Alertas</button>
-            <button class="botao" onclick="exportarCSV()">⬇ Exportar</button>
-            <button class="botao" id="btn-limpar" onclick="limpar()" style="display:none">Novo</button>
         </div>
 
         <input type="file" id="entrada-arquivo" accept=".csv" onchange="carregarCSV(this)">
