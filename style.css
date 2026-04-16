@@ -999,3 +999,52 @@ tbody tr.conferido {
     font-weight: bold;
 }
 
+@media (max-width: 700px) {
+    /* Container em Grid para botões iguais */
+    .linha-botoes {
+        display: grid;
+        grid-template-columns: 1fr 1fr 50px; /* Abrir, Exportar e Engrenagem */
+        gap: 8px;
+        width: 100%;
+        margin-bottom: 12px;
+    }
+
+    /* Ajusta altura de todos os botões para ficarem iguais */
+    .botao, .btn-engrenagem {
+        height: 46px !important; /* Altura padrão para o dedo */
+        margin-bottom: 0 !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 !important;
+        font-size: 11px;
+    }
+
+    /* Engrenagem no canto direito */
+    .menu-config {
+        position: relative;
+    }
+
+    .btn-engrenagem {
+        width: 100%; /* Ocupa os 50px definidos no grid */
+        background: #fff;
+        font-size: 20px;
+    }
+
+    /* Dropdown alinhado à direita e com sombra para destacar */
+    .dropdown-config {
+        position: absolute;
+        right: 0;
+        top: 50px; /* Logo abaixo do botão */
+        width: 220px; /* Largura confortável para os itens */
+        display: none;
+        background: #fff;
+        border: 2px solid #1a1a1a;
+        z-index: 3000;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    
+    .dropdown-config.aberto {
+        display: block;
+    }
+}
