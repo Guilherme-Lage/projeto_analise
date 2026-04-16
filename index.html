@@ -20,7 +20,9 @@
             <button class="botao" id="btn-ocultar" onclick="alternarConferidos()">Mostrar todos</button>
             <button class="botao" id="btn-ocultar-alertas" onclick="alternarAlertas()">Ocultar Alertas</button>
             <button class="botao" onclick="exportarCSV()">⬇ Exportar</button>
-            <button class="botao" id="btn-limpar" onclick="limpar()" style="display:none">Novo</button>
+            <button class="botao" id="btn-limpar" onclick="limpar()" style="display:none">Limpar</button>
+            <button class="botao" id="btn-novo-item" onclick="abrirModalNovo()">Novo</button>
+            <button class="botao" id="btn-modo-edicao" onclick="solicitarSenhaEdicao()">Modo Desmarcar</button>
         </div>
         <div class="log-container">
             <div class="log-header" id="log-header">
@@ -173,6 +175,87 @@
 
             </div>
         </div>
+    </div>
+
+
+    <!-- MODAL NOVO ITEM -->
+    <div class="modal-overlay" id="modal-novo-overlay" onclick="fecharModalNovoFora(event)">
+        <div class="modal" id="modal-novo">
+            <div class="modal-header">
+                <span class="modal-header-titulo">Adicionar Item</span>
+                <button class="modal-fechar" onclick="fecharModalNovo()">✕</button>
+            </div>
+            <div class="modal-body">
+
+                <!-- Locação -->
+                <div class="modal-row" style="border-bottom:1.5px solid #e8e8e8;">
+                    <div class="modal-cell">
+                        <span class="modal-cell-label">Locação</span>
+                        <input class="modal-cell-input" id="novo-locacao" type="text" placeholder="Ex: 20.1.1.A.1">
+                    </div>
+                </div>
+
+                <!-- Código com autocomplete -->
+                <div class="modal-row" style="border-bottom:1.5px solid #e8e8e8; position:relative;">
+                    <div class="modal-cell" style="overflow:visible;">
+                        <span class="modal-cell-label">Código</span>
+                        <input class="modal-cell-input" id="novo-codigo" type="text" placeholder="Digite para buscar..."
+                            oninput="buscarSugestoes()" autocomplete="off">
+                        <div id="sugestoes-lista" style="
+                            display:none; position:absolute; left:0; right:0; top:100%;
+                            background:#fff; border:1.5px solid #1a1a1a; border-top:none;
+                            z-index:2000; max-height:200px; overflow-y:auto;
+                            font-family:'IBM Plex Mono',monospace; font-size:11px;"></div>
+                    </div>
+                </div>
+
+                <!-- Nome (preenchido automaticamente ou livre) -->
+                <div class="modal-row" style="border-bottom:1.5px solid #e8e8e8;">
+                    <div class="modal-cell">
+                        <span class="modal-cell-label">Nome</span>
+                        <input class="modal-cell-input" id="novo-nome" type="text" placeholder="Nome do item">
+                    </div>
+                </div>
+
+                <!-- Marca -->
+                <div class="modal-row" style="border-bottom:1.5px solid #e8e8e8;">
+                    <div class="modal-cell">
+                        <span class="modal-cell-label">Marca</span>
+                        <input class="modal-cell-input" id="novo-marca" type="text" placeholder="">
+                    </div>
+                </div>
+
+                <!-- GTIN Antigo -->
+                <div class="modal-row" style="border-bottom:1.5px solid #e8e8e8;">
+                    <div class="modal-cell">
+                        <span class="modal-cell-label">GTIN Antigo</span>
+                        <input class="modal-cell-input" id="novo-gtin-antigo" type="text" placeholder="">
+                    </div>
+                </div>
+
+                <!-- GTIN Novo -->
+                <div class="modal-row" style="border-bottom:1.5px solid #e8e8e8;">
+                    <div class="modal-cell">
+                        <span class="modal-cell-label">GTIN Novo</span>
+                        <input class="modal-cell-input" id="novo-gtin-novo" type="text" placeholder="">
+                    </div>
+                </div>
+
+                <!-- Quantidade -->
+                <div class="modal-row" style="border-bottom:1.5px solid #e8e8e8;">
+                    <div class="modal-cell">
+                        <span class="modal-cell-label">Quantidade</span>
+                        <input class="modal-cell-input" id="novo-qtdo" type="number" min="0" step="any" placeholder="0">
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancelar" onclick="fecharModalNovo()">Cancelar</button>
+                <button class="modal-btn modal-btn-confirmar" onclick="confirmarNovo()">Adicionar</button>
+            </div>
+        </div>
+    </div>
 
 </body>
 
