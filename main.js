@@ -476,11 +476,11 @@ function renderizarTabela(lista) {
 
         if (estaConferido) {
             tr.classList.add('conferido');
-            
+
             if (ehAlternativo) {
                 // Estilo para Item Alternativo
                 tr.style.background = "#eef0ff"; // Azul claro para destacar a linha
-                classeQuadrado = "ok-alternativo"; 
+                classeQuadrado = "ok-alternativo";
                 iconeStatus = "A";
             } else {
                 // Estilo para Item Normal Conferido
@@ -544,38 +544,50 @@ function atualizarContador() {
 }
 
 function filtrar() {
-    const buscaRaw = document.getElementById('busca').value.trim();
-    const busca = buscaRaw.toLowerCase();
+    const busca = (document.getElementById('busca').value || '').trim().toUpperCase();
     const tipo = document.getElementById('filtro-tipo').value;
 
-    // Se limpar a busca, resetamos o rastreio de locação clicada
-    if (busca === '') {
-        ultimaLocacaoClicada = "";
-        contextoAnterior = null;
+    if (busca === "") {
         renderizarTabela(itens);
         return;
     }
 
-    const filtrados = itens.filter(i => {
-        const loc = (i.locacao || '').toLowerCase();
-        const cod = (i.codigo || '').toLowerCase();
-        const nome = (i.nome || '').toLowerCase();
-        const marca = (i.marca || '').toLowerCase();
-        if (tipo === 'prateleira') return loc.includes(busca);
-        const gtin = (i.gtinOriginal || '').toLowerCase() + (i.gtinNovo || '').toLowerCase();
+    // 1. Filtra os itens normalmente
+    let resultados = itens.filter(i => {
+        const cod = (i.codigo || "").toUpperCase();
+        const nom = (i.nome || "").toUpperCase();
+        const loc = (i.locacao || "").toUpperCase();
 
-        if (tipo === 'locacao') return loc.includes(busca);
         if (tipo === 'codigo') return cod.includes(busca);
-        if (tipo === 'nome') return nome.includes(busca);
-        if (tipo === 'marca') return marca.includes(busca);
-        if (tipo === 'gtin') return gtin.includes(busca);
+        if (tipo === 'nome') return nom.includes(busca);
+        if (tipo === 'locacao') return loc.includes(busca);
 
-        // Busca Global
-        return loc.includes(busca) || cod.includes(busca) || nome.includes(busca) || marca.includes(busca) || gtin.includes(busca);
+        // Busca geral (todos)
+        return cod.includes(busca) || nom.includes(busca) || loc.includes(busca);
     });
 
-    renderizarTabela(filtrados);
+    // 2. ORDENAÇÃO POR RELEVÂNCIA (Prioriza o início do texto)
+    resultados.sort((a, b) => {
+        const campoA = tipo === 'nome' ? a.nome.toUpperCase() : a.codigo.toUpperCase();
+        const campoB = tipo === 'nome' ? b.nome.toUpperCase() : b.codigo.toUpperCase();
+
+        // Regra 1: Exato vem primeiro
+        if (campoA === busca && campoB !== busca) return -1;
+        if (campoB === busca && campoA !== busca) return 1;
+
+        // Regra 2: Começa com o termo vem depois
+        const iniciaA = campoA.startsWith(busca);
+        const iniciaB = campoB.startsWith(busca);
+        if (iniciaA && !iniciaB) return -1;
+        if (iniciaB && !iniciaA) return 1;
+
+        // Regra 3: Ordem alfabética normal para o resto
+        return campoA.localeCompare(campoB, undefined, { numeric: true });
+    });
+
+    renderizarTabela(resultados);
 }
+
 function exportarCSV() {
     try {
         if (itens.length === 0) {
@@ -753,7 +765,7 @@ window.onload = async () => {
                 }
             }
         };
-
+        configurarFocoNovoItem();
         request.onerror = () => console.error("Erro ao buscar backup no IndexedDB");
 
     } catch (e) {
@@ -828,8 +840,12 @@ function alternarAlertas() {
 
 const inputGtin = document.getElementById('modal-gtin-novo');
 const inputQuantidade = document.getElementById('modal-qtdo');
+const btnFoto = document.querySelector('.btn-adicionar-foto');
+const inputArquivo = document.getElementById('foto-input'); // O input file escondido
+const btnConfirmar = document.getElementById('modal-btn-confirmar');
 
 if (inputGtin && inputQuantidade) {
+    // 1. Enter no GTIN -> Pula para Quantidade
     inputGtin.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -837,7 +853,32 @@ if (inputGtin && inputQuantidade) {
             inputQuantidade.select();
         }
     });
+
+    // 2. Enter na Quantidade -> Pula para o Botão de Foto
+    inputQuantidade.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (btnFoto) btnFoto.focus();
+        }
+    });
+
+    // 3. Após Adicionar a Foto -> Pula para o Confirmar
+    // O evento 'change' dispara quando você termina de selecionar as fotos
+    if (inputArquivo) {
+        inputArquivo.addEventListener('change', function () {
+            // Pequeno delay para dar tempo do sistema processar a miniatura
+            setTimeout(() => {
+                if (btnConfirmar) {
+                    btnConfirmar.focus();
+                    // Destaque visual no botão Confirmar
+                    btnConfirmar.style.outline = "3px solid #fff";
+                    btnConfirmar.style.boxShadow = "0 0 10px rgba(0,0,156,0.5)";
+                }
+            }, 500);
+        });
+    }
 }
+
 function alternarTrocaLocacao() {
     const btn = document.getElementById('modal-status-loc');
     const cellNova = document.getElementById('cell-loc-nova');
@@ -861,13 +902,13 @@ function alternarTrocaLocacao() {
 
 
 // ═══════════════════════════════════════════════════════════════
-//  MODAL NOVO ITEM — código completamente separado, não altera nada acima
+//  MODAL NOVO ITEM 
 // ═══════════════════════════════════════════════════════════════
 
 function abrirModalNovo() {
-       fotosTempNovo = []; // Reseta o ar
+    fotosTempNovo = []; // Reseta o ar
     const galeria = document.getElementById('novo-galeria-fotos');
-    if(galeria) galeria.innerHTML = '';
+    if (galeria) galeria.innerHTML = '';
     ['novo-locacao', 'novo-codigo', 'novo-nome', 'novo-marca',
         'novo-gtin-antigo', 'novo-gtin-novo', 'novo-qtdo'].forEach(id => {
             const el = document.getElementById(id);
@@ -901,19 +942,40 @@ function buscarSugestoes() {
 
     if (!lista) return;
 
-    if (termo.length < 2 || itens.length === 0) {
+    if (termo.length < 1 || itens.length === 0) {
         lista.style.display = 'none';
         return;
     }
 
-    // Busca por código OU nome, remove duplicatas por código
+    // 1. Filtra todos que batem com o termo
+    let filtrados = itens.filter(i => i.codigo.includes(termo) || i.nome.includes(termo));
+
+    // 2. ORDENAÇÃO POR RELEVÂNCIA
+    filtrados.sort((a, b) => {
+        const codA = a.codigo.toUpperCase();
+        const codB = b.codigo.toUpperCase();
+
+        // Prioridade 1: Código Exato (Ex: "17" no topo)
+        if (codA === termo && codB !== termo) return -1;
+        if (codB === termo && codA !== termo) return 1;
+
+        // Prioridade 2: Começa com o termo (Ex: "170" antes de "917")
+        const iniciaA = codA.startsWith(termo);
+        const iniciaB = codB.startsWith(termo);
+        if (iniciaA && !iniciaB) return -1;
+        if (iniciaB && !iniciaA) return 1;
+
+        // Prioridade 3: Ordem alfabética para o resto
+        return codA.localeCompare(codB, undefined, { numeric: true });
+    });
+
+    // 3. Remove duplicatas e limita a 12
     const vistos = new Set();
-    const resultados = itens.filter(i => {
-        const bate = i.codigo.includes(termo) || i.nome.includes(termo);
-        if (!bate || vistos.has(i.codigo)) return false;
+    const resultados = filtrados.filter(i => {
+        if (vistos.has(i.codigo)) return false;
         vistos.add(i.codigo);
         return true;
-    }).slice(0, 12); // máximo 12 sugestões
+    }).slice(0, 12);
 
     if (resultados.length === 0) {
         lista.style.display = 'none';
@@ -921,8 +983,7 @@ function buscarSugestoes() {
     }
 
     lista.innerHTML = resultados.map(item => `
-        <div onclick="selecionarSugestao('${item.codigo.replace(/'/g, "\\'")}','${item.nome.replace(/'/g, "\\'")
-        }','${(item.marca || '').replace(/'/g, "\\'")}','${(item.gtinAntigo || '').replace(/'/g, "\\'")}')"
+        <div onclick="selecionarSugestao('${item.codigo.replace(/'/g, "\\'")}','${item.nome.replace(/'/g, "\\'")}','${(item.marca || '').replace(/'/g, "\\'")}','${(item.gtinAntigo || '').replace(/'/g, "\\'")}')"
             style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee; line-height:1.3;"
             onmouseover="this.style.background='#eef0ff'"
             onmouseout="this.style.background='#fff'">
@@ -933,21 +994,111 @@ function buscarSugestoes() {
 
     lista.style.display = 'block';
 }
+
+// --- FLUXO DE FOCO: MODAL NOVO ITEM ---
+
+// --- FLUXO DE FOCO COMPLETO: MODAL NOVO ITEM ---
+function configurarFocoNovoItem() {
+    const nLoc = document.getElementById('novo-locacao');
+    const nCod = document.getElementById('novo-codigo');
+    const nGtinN = document.getElementById('novo-gtin-novo');
+    const nQtd = document.getElementById('novo-qtdo');
+    const nChkAlt = document.getElementById('novo-is-alternativo');
+    const nBtnFoto = document.querySelector('#modal-novo-overlay .btn-adicionar-foto');
+    const nInputArq = document.getElementById('novo-foto-input');
+    const nBtnConf = document.getElementById('btnadd'); // Seu botão Adicionar
+
+    if (!nLoc) return;
+
+    // 1. Locação -> Código
+    nLoc.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); nCod.focus(); }
+    });
+
+    // 2. Código -> GTIN Novo (Com seleção automática)
+    nCod.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            const lista = document.getElementById('sugestoes-lista');
+            if (lista && lista.style.display === 'block' && lista.children.length > 0) {
+                e.preventDefault();
+                lista.children[0].click();
+            } else {
+                e.preventDefault();
+                nGtinN.focus();
+            }
+        }
+    });
+
+    // 3. GTIN Novo -> Quantidade
+    nGtinN.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); nQtd.focus(); nQtd.select(); }
+    });
+
+    // 4. Quantidade -> Botão Foto
+    nQtd.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (nBtnFoto) nBtnFoto.focus();
+        }
+    });
+
+    // 5. APÓS FOTO -> Vai para o Checkbox Alternativo
+    if (nInputArq) {
+        nInputArq.addEventListener('change', () => {
+            setTimeout(() => {
+                if (nChkAlt) {
+                    nChkAlt.focus();
+                    // Destaque visual no checkbox
+                    nChkAlt.parentElement.style.outline = "2px solid #00009C";
+                }
+            }, 500);
+        });
+    }
+
+    // 6. Checkbox -> Botão Confirmar (btnadd)
+    if (nChkAlt) {
+        nChkAlt.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Impede o comportamento padrão
+
+                // INVERTE O STATUS (Igual o Espaço faria)
+                nChkAlt.checked = !nChkAlt.checked;
+
+                // Remove o destaque visual
+                nChkAlt.parentElement.style.outline = "none";
+
+                // PULA PARA O BOTÃO CONFIRMAR
+                if (nBtnConf) {
+                    nBtnConf.focus();
+                    nBtnConf.style.outline = "2px solid #00009C";
+                }
+            }
+        });
+    }
+}
+
+// Chame essa função uma única vez no seu window.onload
+// configurarFocoNovoItem();
+
+
+//fim modal novo
+
+
 function selecionarSugestao(codigo, nome, marca, gtinAntigo) {
     document.getElementById('novo-codigo').value = codigo;
     document.getElementById('novo-nome').value = nome;
     document.getElementById('novo-marca').value = marca;
     document.getElementById('novo-gtin-antigo').value = gtinAntigo;
-    
+
     // IDEIA DE ALERTA: Muda o estilo para indicar que é uma cópia/alternativo
     const inputNome = document.getElementById('novo-nome');
     inputNome.style.background = "#eef0ff"; // Um azulzinho leve
-    
+
     // Adiciona uma flag visual ou texto
     console.log("Item vinculado ao original: " + codigo);
-    
+
     fecharSugestoes();
-    
+
     // Foca no GTIN Novo para o usuário bipar o que ele tem em mãos
     setTimeout(() => {
         const el = document.getElementById('novo-gtin-novo');
@@ -964,7 +1115,7 @@ async function confirmarNovo() {
     const qtdVal = document.getElementById('novo-qtdo').value;
     const qtd = qtdVal !== '' ? parseFloat(qtdVal) : 0;
 
-      const isAlt = document.getElementById('novo-is-alternativo')?.checked || false; // Captura o checkbox
+    const isAlt = document.getElementById('novo-is-alternativo')?.checked || false; // Captura o checkbox
 
     if (!codigo) { alert('Código é obrigatório.'); return; }
     if (!locacao) { alert('Locação é obrigatória.'); return; }
@@ -1036,8 +1187,8 @@ function solicitarSenhaEdicao() {
     } else {
         modoEdicaoAtivo = false;
         document.getElementById('btn-modo-desmarcar').textContent = "Modo Desmarcar";
-                 document.getElementById('btn-modo-desmarcar').style.background = "#fff";
-            document.getElementById('btn-modo-desmarcar').style.color = "#000000";
+        document.getElementById('btn-modo-desmarcar').style.background = "#fff";
+        document.getElementById('btn-modo-desmarcar').style.color = "#000000";
         alert("Modo de edição desativado.");
     }
 }
@@ -1102,7 +1253,7 @@ let fotosTempNovo = []; // Armazena as fotos antes de salvar o item
 
 function carregarFotosNovo(input) {
     if (!input.files || input.files.length === 0) return;
-    
+
     const arquivos = Array.from(input.files);
     let lidos = 0;
 
@@ -1118,7 +1269,7 @@ function carregarFotosNovo(input) {
                 canvas.height = img.height * scale;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                
+
                 fotosTempNovo.push(canvas.toDataURL('image/jpeg', 0.4));
                 lidos++;
 
@@ -1136,7 +1287,7 @@ function carregarFotosNovo(input) {
 function renderizarGaleriaNovo() {
     const galeria = document.getElementById('novo-galeria-fotos');
     if (!galeria) return;
-    
+
     galeria.innerHTML = fotosTempNovo.map((src, i) => `
         <div class="foto-thumb">
             <img src="${src}">
@@ -1162,7 +1313,7 @@ document.querySelectorAll('.item-menu').forEach(botao => {
 });
 
 // Fecha se clicar fora
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     const menu = document.getElementById('dropdown-config');
     const btn = document.querySelector('.btn-engrenagem');
     if (menu && !menu.contains(e.target) && e.target !== btn) {
