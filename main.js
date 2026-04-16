@@ -527,21 +527,38 @@ function renderizarTabela(lista) {
 
 
 function atualizarContador() {
-    const conf = itens.filter(i => i.conferido).length;
-    const total = itens.length;
-    document.getElementById('cnt-conf').textContent = conf;
-    document.getElementById('cnt-total').textContent = total;
+    const elConf = document.getElementById('cnt-conf');
+    const elTotal = document.getElementById('cnt-total');
+    const painel = document.getElementById('contador');
 
-    const el = document.getElementById('contador');
-    if (total === 0) return;
-    if (conf === 0) {
-        el.style.background = '#fff0f0'; el.style.color = '#CC0000'; el.style.borderColor = '#CC0000';
-    } else if (conf === total) {
-        el.style.background = '#edf7f0'; el.style.color = '#2d7a4a'; el.style.borderColor = '#2d7a4a';
+    if (itens.length > 0) {
+        painel.style.display = 'block';
+
+        const total = itens.length;
+        const conferidos = itens.filter(i => i.conferido).length;
+
+        if (elConf) elConf.textContent = conferidos;
+        if (elTotal) elTotal.textContent = total;
+
+        // --- LÓGICA DE CORES ---
+        if (conferidos === 0) {
+            // 1. BRANCO quando for zero
+            painel.style.backgroundColor = "#ffffff";
+            painel.style.color = "#000000";
+        } else if (conferidos < total) {
+            // 2. AMARELO enquanto estiver conferindo
+            painel.style.backgroundColor = "#fff9c4"; // Amarelo suave
+            painel.style.color = "#000000"; // Marrom para ler melhor no amarelo
+        } else {
+            // 3. VERDE quando o total for atingido
+            painel.style.backgroundColor = "#155724"; // Verde suave
+            painel.style.color = "#ffffff"; // Verde escuro para o texto
+        }
     } else {
-        el.style.background = '#fff9eb'; el.style.color = '#f39c12'; el.style.borderColor = '#f39c12';
+        if (painel) painel.style.display = 'none';
     }
 }
+
 
 function filtrar() {
     const busca = (document.getElementById('busca').value || '').trim().toUpperCase();
