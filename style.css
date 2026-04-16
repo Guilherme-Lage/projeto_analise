@@ -911,3 +911,9 @@ tbody tr.conferido {
 .log-item b {
     color: #00009C;
 }
+
+.quadrado.ok-alternativo {
+    background: #00009C; /* Azul Hontec */
+    border-color: #00009C;
+    color: #fff;
+}

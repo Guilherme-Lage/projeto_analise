@@ -472,11 +472,21 @@ function renderizarTabela(lista) {
 
         const estaConferido = item.conferido === true;
         const ehAlerta = !estaConferido && locacoesIniciadas.includes(item.locacao);
+        const ehAlternativo = item.ehAlternativo === true; // Nova verificação
 
         if (estaConferido) {
             tr.classList.add('conferido');
-            classeQuadrado = "ok";
-            iconeStatus = "✓";
+            
+            if (ehAlternativo) {
+                // Estilo para Item Alternativo
+                tr.style.background = "#eef0ff"; // Azul claro para destacar a linha
+                classeQuadrado = "ok-alternativo"; 
+                iconeStatus = "A";
+            } else {
+                // Estilo para Item Normal Conferido
+                classeQuadrado = "ok";
+                iconeStatus = "✓";
+            }
         } else if (ehAlerta) {
             tr.classList.add('em-alerta');
             classeQuadrado = "status-pendente";
@@ -855,7 +865,9 @@ function alternarTrocaLocacao() {
 // ═══════════════════════════════════════════════════════════════
 
 function abrirModalNovo() {
-    // Limpa todos os campos
+       fotosTempNovo = []; // Reseta o ar
+    const galeria = document.getElementById('novo-galeria-fotos');
+    if(galeria) galeria.innerHTML = '';
     ['novo-locacao', 'novo-codigo', 'novo-nome', 'novo-marca',
         'novo-gtin-antigo', 'novo-gtin-novo', 'novo-qtdo'].forEach(id => {
             const el = document.getElementById(id);
@@ -952,6 +964,8 @@ async function confirmarNovo() {
     const qtdVal = document.getElementById('novo-qtdo').value;
     const qtd = qtdVal !== '' ? parseFloat(qtdVal) : 0;
 
+      const isAlt = document.getElementById('novo-is-alternativo')?.checked || false; // Captura o checkbox
+
     if (!codigo) { alert('Código é obrigatório.'); return; }
     if (!locacao) { alert('Locação é obrigatória.'); return; }
 
@@ -967,7 +981,8 @@ async function confirmarNovo() {
         gtinAntigo: gtinAnt,
         gtinNovo: gtinNov,
         marca,
-        conferido: true,    // já entra como conferido (foi adicionado manualmente)
+        conferido: true,
+        ehAlternativo: isAlt, // <--- NOVA PROPRIEDADE
         qtdConferida: qtd,
         dataHoraRegistro: dt,
         fotos: [],
@@ -975,6 +990,7 @@ async function confirmarNovo() {
     };
 
     itens.push(novoItem);
+
     itens.sort((a, b) => a.locacao.localeCompare(b.locacao, undefined, { numeric: true }));
 
     await salvarBackup();
@@ -1079,4 +1095,56 @@ async function resetarItem() {
         atualizarContador();
         fecharModal();
     }
+}
+
+let fotosTempNovo = []; // Armazena as fotos antes de salvar o item
+
+function carregarFotosNovo(input) {
+    if (!input.files || input.files.length === 0) return;
+    
+    const arquivos = Array.from(input.files);
+    let lidos = 0;
+
+    arquivos.forEach(arquivo => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 500;
+                const scale = MAX_WIDTH / img.width;
+                canvas.width = MAX_WIDTH;
+                canvas.height = img.height * scale;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                fotosTempNovo.push(canvas.toDataURL('image/jpeg', 0.4));
+                lidos++;
+
+                if (lidos === arquivos.length) {
+                    renderizarGaleriaNovo();
+                }
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(arquivo);
+    });
+    input.value = '';
+}
+
+function renderizarGaleriaNovo() {
+    const galeria = document.getElementById('novo-galeria-fotos');
+    if (!galeria) return;
+    
+    galeria.innerHTML = fotosTempNovo.map((src, i) => `
+        <div class="foto-thumb">
+            <img src="${src}">
+            <button class="foto-remover" onclick="removerFotoNovo(${i})">✕</button>
+        </div>
+    `).join('');
+}
+
+function removerFotoNovo(idx) {
+    fotosTempNovo.splice(idx, 1);
+    renderizarGaleriaNovo();
 }
