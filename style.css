@@ -917,3 +917,85 @@ tbody tr.conferido {
     border-color: #00009C;
     color: #fff;
 }
+/* Container dos botões principais */
+.linha-botoes {
+    display: flex;
+    flex-wrap: nowrap; /* Garante que fiquem na mesma linha */
+    gap: 8px;
+    margin-bottom: 16px;
+    width: 100%;
+}
+
+/* Botões Abrir e Exportar: ocupam o espaço que sobrar */
+.btn-primario {
+    flex: 1; 
+    height: 44px; /* Altura ideal para o dedo no celular */
+
+    border-color: #00009C;
+    font-weight: 600;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+/* Container do Menu */
+.menu-config {
+    position: relative;
+    flex-shrink: 0; /* Impede que a engrenagem esmague */
+}
+
+/* Botão da Engrenagem */
+.btn-engrenagem {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border: 1.5px solid #1a1a1a;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Dropdown (O menu que abre) */
+.dropdown-config {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 50px; /* Logo abaixo do botão */
+    background: #fff;
+    border: 2px solid #1a1a1a;
+    border-radius: 6px;
+    width: 240px; /* Largura boa para leitura no celular */
+    z-index: 2000;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+.dropdown-config.aberto {
+    display: block;
+}
+
+/* Itens dentro do Menu */
+.item-menu {
+    width: 100%;
+    padding: 14px 16px;
+    text-align: left;
+    background: none;
+    border: none;
+    border-bottom: 1px solid #eee;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: #1a1a1a;
+    text-transform: uppercase;
+}
+
+.item-menu:last-child { border-bottom: none; }
+.item-menu:active { background: #f0f4ff; } /* Efeito de clique no celular */
+
+/* Estilo para o botão de Desmarcar quando ativo dentro do menu */
+.item-menu.ativo {
+    background: #fff9c4;
+    font-weight: bold;
+}
+

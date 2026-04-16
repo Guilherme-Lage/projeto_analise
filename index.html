@@ -16,13 +16,26 @@
         <h1>Analise Estoque Hontec</h1>
 
         <div class="linha-botoes">
-            <button class="botao" onclick="document.getElementById('entrada-arquivo').click()">Abrir Arquivo</button>
-            <button class="botao" id="btn-ocultar" onclick="alternarConferidos()">Mostrar todos</button>
-            <button class="botao" id="btn-ocultar-alertas" onclick="alternarAlertas()">Ocultar Alertas</button>
-            <button class="botao" onclick="exportarCSV()">⬇ Exportar</button>
-            <button class="botao" id="btn-limpar" onclick="limpar()" style="display:none">Limpar</button>
-            <button class="botao" id="btn-novo-item" onclick="abrirModalNovo()">Novo</button>
-            <button class="botao" id="btn-modo-edicao" onclick="solicitarSenhaEdicao()">Modo Desmarcar</button>
+            <!-- Botões que SEMPRE aparecem -->
+            <button class="botao btn-primario" onclick="document.getElementById('entrada-arquivo').click()">Abrir
+                CSV</button>
+            <button class="botao btn-primario" onclick="exportarCSV()">⬇ Exportar</button>
+
+            <!-- Menu Hambúrguer / Configurações -->
+            <div class="menu-config">
+                <button class="botao btn-engrenagem" onclick="alternarMenuConfig()">⚙️</button>
+                <div class="dropdown-config" id="dropdown-config">
+                    <button class="item-menu" onclick="abrirModalNovo()">➕ Novo Item</button>
+                    <button class="item-menu" id="btn-ocultar" onclick="alternarConferidos()">Mostrar Todos</button>
+                    <button class="item-menu" id="btn-ocultar-alertas" onclick="alternarAlertas()">Ocultar
+                        Alertas</button>
+                    <button class="item-menu" id="btn-modo-desmarcar" onclick="solicitarSenhaEdicao()">Modo
+                        Desmarcar</button>
+                    <hr>
+                    <button class="item-menu btn-perigo" id="btn-limpar" onclick="limpar()" style="display:none">Novo
+                        Romaneio (Limpar)</button>
+                </div>
+            </div>
         </div>
         <div class="log-container">
             <div class="log-header" id="log-header">

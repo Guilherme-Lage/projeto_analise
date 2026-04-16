@@ -1026,17 +1026,18 @@ function solicitarSenhaEdicao() {
         const senha = prompt("Digite a senha para habilitar a edição:");
         if (senha === "1234") {
             modoEdicaoAtivo = true;
-            document.getElementById('btn-modo-edicao').textContent = "Bloquear Desmarcar";
-            document.getElementById('btn-modo-edicao').style.background = "#cc0000";
-            document.getElementById('btn-modo-edicao').style.color = "#fff";
+            document.getElementById('btn-modo-desmarcar').textContent = "Desativar Desmarcar";
+            document.getElementById('btn-modo-desmarcar').style.background = "#cc0000";
+            document.getElementById('btn-modo-desmarcar').style.color = "#fff";
             alert("Modo de edição ativado! Agora você pode limpar conferências.");
         } else {
             alert("Senha incorreta!");
         }
     } else {
         modoEdicaoAtivo = false;
-        document.getElementById('btn-modo-edicao').textContent = "Modo Desmarcar";
-        document.getElementById('btn-modo-edicao').style.background = "#fff";
+        document.getElementById('btn-modo-desmarcar').textContent = "Modo Desmarcar";
+                 document.getElementById('btn-modo-desmarcar').style.background = "#fff";
+            document.getElementById('btn-modo-desmarcar').style.color = "#000000";
         alert("Modo de edição desativado.");
     }
 }
@@ -1148,3 +1149,23 @@ function removerFotoNovo(idx) {
     fotosTempNovo.splice(idx, 1);
     renderizarGaleriaNovo();
 }
+function alternarMenuConfig() {
+    const menu = document.getElementById('dropdown-config');
+    menu.classList.toggle('aberto');
+}
+
+// Fecha o menu ao clicar em qualquer item lá dentro
+document.querySelectorAll('.item-menu').forEach(botao => {
+    botao.addEventListener('click', () => {
+        document.getElementById('dropdown-config').classList.remove('aberto');
+    });
+});
+
+// Fecha se clicar fora
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('dropdown-config');
+    const btn = document.querySelector('.btn-engrenagem');
+    if (menu && !menu.contains(e.target) && e.target !== btn) {
+        menu.classList.remove('aberto');
+    }
+});
