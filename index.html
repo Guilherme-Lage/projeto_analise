@@ -23,6 +23,7 @@
             <div class="menu-config">
                 <button class="botao btn-engrenagem" onclick="alternarMenuConfig()">⚙️</button>
                 <div class="dropdown-config" id="dropdown-config">
+                    <button class="item-menu" onclick="abrirLegenda()">ℹ️ Legenda de Status</button>
 
 
 
@@ -212,20 +213,21 @@
                 </div>
 
                 <!-- Código com autocomplete -->
-<div class="modal-row row-codigo-wrapper">
-    <div class="modal-cell cell-codigo">
-        <span class="modal-cell-label">Código</span>
-        <input class="modal-cell-input" id="novo-codigo" type="text" placeholder="Buscar..." oninput="buscarSugestoes()" autocomplete="off">
-        <div id="sugestoes-lista" class="sugestoes-autocomplete"></div>
-    </div>
+                <div class="modal-row row-codigo-wrapper">
+                    <div class="modal-cell cell-codigo">
+                        <span class="modal-cell-label">Código</span>
+                        <input class="modal-cell-input" id="novo-codigo" type="text" placeholder="Buscar..."
+                            oninput="buscarSugestoes()" autocomplete="off">
+                        <div id="sugestoes-lista" class="sugestoes-autocomplete"></div>
+                    </div>
 
-    <!-- Selo com texto "ITEM ALTERNATIVO" e o Quadrado "A" -->
-    <div id="selo-alternativo" class="indicador-alt-completo">
-        <span class="texto-alternativo">ITEM ALTERNATIVO</span>
-        <div class="quadrado-A">A</div>
-        <input type="checkbox" id="novo-is-alternativo" style="display: none;">
-    </div>
-</div>
+                    <!-- Selo com texto "ITEM ALTERNATIVO" e o Quadrado "A" -->
+                    <div id="selo-alternativo" class="indicador-alt-completo">
+                        <span class="texto-alternativo">ITEM ALTERNATIVO</span>
+                        <div class="quadrado-A">A</div>
+                        <input type="checkbox" id="novo-is-alternativo" style="display: none;">
+                    </div>
+                </div>
 
 
                 <!-- Nome (preenchido automaticamente ou livre) -->
@@ -279,7 +281,7 @@
                             onchange="carregarFotosNovo(this)" style="display:none">
                     </div>
                 </div>
-        
+
 
 
             </div>
@@ -290,6 +292,60 @@
         </div>
     </div>
 
+    <!-- Modal Legenda -->
+    <div class="modal-overlay" id="modal-legenda" onclick="fecharLegendaFora(event)">
+        <div class="modal" style="max-width: 340px; border: 2px solid #1a1a1a;">
+            <div class="modal-header" style="background: #cc0000; color: #fff;">
+                <span style="font-family: 'IBM Plex Mono', monospace; letter-spacing: 1px;">SINAIS DE STATUS</span>
+                <button class="modal-fechar" onclick="fecharLegenda()" style="color: #fff;">✕</button>
+            </div>
+
+            <div class="modal-body" style="padding: 20px; background: #fff;">
+                <!-- BRANCO -->
+                <div class="legenda-item">
+                    <div class="quadrado" style="border: 2px solid #ccc; background: #fff;"></div>
+                    <div class="legenda-texto">
+                        <span class="status-titulo">PENDENTE</span>
+                        <span class="status-desc">Aguardando conferência.</span>
+                    </div>
+                </div>
+
+                <!-- AMARELO -->
+                <div class="legenda-item">
+                    <div class="quadrado status-pendente" style="border: 2px solid #1a1a1a;">!</div>
+                    <div class="legenda-texto">
+                        <span class="status-titulo">LOCAÇÃO REPETIDA</span>
+                        <span class="status-desc">Há itens conferidos nesta locação.</span>
+                    </div>
+                </div>
+
+                <!-- VERDE -->
+                <div class="legenda-item">
+                    <div class="quadrado ok">✓</div>
+                    <div class="legenda-texto">
+                        <span class="status-titulo" style="color: #2d7a4a;">CONFERIDO</span>
+                        <span class="status-desc">Salvo no banco de dados.</span>
+                    </div>
+                </div>
+
+                <!-- AZUL -->
+                <div class="legenda-item">
+                    <div class="quadrado ok-alternativo">A</div>
+                    <div class="legenda-texto">
+                        <span class="status-titulo" style="color: #00009C;">ALTERNATIVO</span>
+                        <span class="status-desc">Item de outra marca ou embalagem nova.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="padding: 15px; display: flex; justify-content: center; background: #f9f9f9; border-top: 1px solid #eee;">
+            <button class="modal-btn-confirmar" 
+                    style="width: 120px; height: 36px; font-size: 11px; border-radius: 4px;" 
+                    onclick="fecharLegenda()">ENTENDI</button>
+        </div>
+
+        </div>
+    </div>
 </body>
 
 </html>

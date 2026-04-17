@@ -1388,3 +1388,16 @@ document.addEventListener('click', function (e) {
         menu.classList.remove('aberto');
     }
 });
+function abrirLegenda() {
+    document.getElementById('modal-legenda').classList.add('aberto');
+    // Fecha o menu da engrenagem ao abrir a legenda
+    document.getElementById('dropdown-config').classList.remove('aberto');
+}
+
+function fecharLegenda() {
+    document.getElementById('modal-legenda').classList.remove('aberto');
+}
+
+function fecharLegendaFora(e) {
+    if (e.target === document.getElementById('modal-legenda')) fecharLegenda();
+}
