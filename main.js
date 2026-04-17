@@ -251,6 +251,7 @@ function adicionarLog(item) {
     }
 }
 
+
 // Lógica do botão (coloque isso no final do arquivo ou no window.onload)
 document.addEventListener('click', function (e) {
     if (e.target && (e.target.id === 'log-header' || e.target.parentElement.id === 'log-header')) {
@@ -648,8 +649,16 @@ function exportarCSV() {
         itens.forEach(item => {
             const qtdC = item.qtdConferida != null ? item.qtdConferida : '';
 
+            // --- LÓGICA DE STATUS: Prioriza "ALTERNATIVO" se a flag existir ---
+            let statusExport = 'PENDENTE';
+            if (item.ehAlternativo) {
+                statusExport = 'ALTERNATIVO';
+            } else if (item.conferido) {
+                statusExport = 'OK';
+            }
+
             let registro = [
-                item.conferido ? 'OK' : 'PENDENTE',
+                statusExport,             // Status corrigido (OK / PENDENTE / ALTERNATIVO)
                 item.marca || '',
                 item.codigo,
                 `"${item.nome}"`,
@@ -659,7 +668,7 @@ function exportarCSV() {
                 item.locacaoNova || '',
                 item.gtinAntigo || '',
                 item.gtinNovo || '',
-                item.dataHoraRegistro || '' // DATA_HORA agora antes das fotos
+                item.dataHoraRegistro || '' 
             ];
 
             // 3. Adiciona as fotos
@@ -691,6 +700,7 @@ function exportarCSV() {
         console.error("Erro ao exportar:", erro);
     }
 }
+
 
 
 function alternarConferidos() {
@@ -1071,10 +1081,9 @@ function configurarFocoNovoItem() {
     const nCod = document.getElementById('novo-codigo');
     const nGtinN = document.getElementById('novo-gtin-novo');
     const nQtd = document.getElementById('novo-qtdo');
-    const nChkAlt = document.getElementById('novo-is-alternativo');
     const nBtnFoto = document.querySelector('#modal-novo-overlay .btn-adicionar-foto');
     const nInputArq = document.getElementById('novo-foto-input');
-    const nBtnConf = document.getElementById('btnadd'); // Seu botão Adicionar
+    const nBtnConf = document.getElementById('btnadd'); 
 
     if (!nLoc) return;
 
@@ -1083,13 +1092,13 @@ function configurarFocoNovoItem() {
         if (e.key === 'Enter') { e.preventDefault(); nCod.focus(); }
     });
 
-    // 2. Código -> GTIN Novo (Com seleção automática)
+    // 2. Código -> GTIN Novo (Com seleção automática da 1ª sugestão)
     nCod.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
             const lista = document.getElementById('sugestoes-lista');
             if (lista && lista.style.display === 'block' && lista.children.length > 0) {
                 e.preventDefault();
-                lista.children[0].click();
+                lista.children[0].click(); // Clica na primeira sugestão
             } else {
                 e.preventDefault();
                 nGtinN.focus();
@@ -1099,54 +1108,56 @@ function configurarFocoNovoItem() {
 
     // 3. GTIN Novo -> Quantidade
     nGtinN.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); nQtd.focus(); nQtd.select(); }
-    });
-
-    // 4. Quantidade -> Botão Foto
-    nQtd.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            if (nBtnFoto) nBtnFoto.focus();
+        if (e.key === 'Enter') { 
+            e.preventDefault(); 
+            nQtd.focus(); 
+            nQtd.select(); 
         }
     });
 
-    // 5. APÓS FOTO -> Vai para o Checkbox Alternativo
-    if (nInputArq) {
-        nInputArq.addEventListener('change', () => {
-            setTimeout(() => {
-                if (nChkAlt) {
-                    nChkAlt.focus();
-                    // Destaque visual no checkbox
-                    nChkAlt.parentElement.style.outline = "2px solid #00009C";
-                }
-            }, 500);
-        });
-    }
+    // 4. Quantidade -> Botão Foto (Pula o checkbox, que já é automático)
+    nQtd.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (nBtnFoto) {
+                nBtnFoto.focus();
+                nBtnFoto.style.outline = "2px solid #00009C";
+            }
+        }
+    });
 
-    // 6. Checkbox -> Botão Confirmar (btnadd)
-    if (nChkAlt) {
-        nChkAlt.addEventListener('keydown', (e) => {
+    // 5. Lógica no Botão de Foto: ENTER PULA | ESPAÇO ABRE
+    if (nBtnFoto) {
+        nBtnFoto.addEventListener('keydown', (e) => {
+            // ENTER: Vai para o botão de Adicionar Item
             if (e.key === 'Enter') {
-                e.preventDefault(); // Impede o comportamento padrão
-
-                // INVERTE O STATUS (Igual o Espaço faria)
-                nChkAlt.checked = !nChkAlt.checked;
-
-                // Remove o destaque visual
-                nChkAlt.parentElement.style.outline = "none";
-
-                // PULA PARA O BOTÃO CONFIRMAR
+                e.preventDefault();
                 if (nBtnConf) {
                     nBtnConf.focus();
                     nBtnConf.style.outline = "2px solid #00009C";
                 }
             }
+            // ESPAÇO: Abre a câmera/arquivos
+            if (e.key === ' ' || e.code === 'Space') {
+                e.preventDefault();
+                if (nInputArq) nInputArq.click();
+            }
+        });
+    }
+
+    // 6. APÓS FOTO -> Vai direto para o botão Adicionar (Confirmar)
+    if (nInputArq) {
+        nInputArq.addEventListener('change', () => {
+            setTimeout(() => {
+                if (nBtnConf) {
+                    nBtnConf.focus();
+                    nBtnConf.style.outline = "2px solid #00009C";
+                }
+            }, 500);
         });
     }
 }
 
-// Chame essa função uma única vez no seu window.onload
-// configurarFocoNovoItem();
 
 
 //fim modal novo
