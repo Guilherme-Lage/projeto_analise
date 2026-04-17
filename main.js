@@ -131,6 +131,7 @@ function abrirModal(globalIdx) {
             if (elGtinNovo) {
                 elGtinNovo.focus();
                 elGtinNovo.select();
+
             }
         }, 150);
 
@@ -245,7 +246,7 @@ function adicionarLog(item) {
 
     lista.prepend(div);
 
-    if (lista.children.length > 5) {
+    if (lista.children.length > 100) {
         lista.removeChild(lista.lastChild);
     }
 }
@@ -583,25 +584,42 @@ function filtrar() {
         return cod.includes(busca) || nom.includes(busca) || loc.includes(busca);
     });
 
-    // 2. ORDENAÇÃO POR RELEVÂNCIA (Prioriza o início do texto)
-    resultados.sort((a, b) => {
-        const campoA = tipo === 'nome' ? a.nome.toUpperCase() : a.codigo.toUpperCase();
-        const campoB = tipo === 'nome' ? b.nome.toUpperCase() : b.codigo.toUpperCase();
+    if (tipo === 'nome') {
+        resultados.sort((a, b) => {
+            const nomA = (a.nome || "").toUpperCase();
+            const nomB = (b.nome || "").toUpperCase();
 
-        // Regra 1: Exato vem primeiro
-        if (campoA === busca && campoB !== busca) return -1;
-        if (campoB === busca && campoA !== busca) return 1;
+            // Ordem Alfabética simples de A a Z
+            return nomA.localeCompare(nomB);
+        });
+    }
+    if (tipo === 'codigo') {
+        resultados.sort((a, b) => {
+            const codA = a.codigo.toUpperCase();
+            const codB = b.codigo.toUpperCase();
 
-        // Regra 2: Começa com o termo vem depois
-        const iniciaA = campoA.startsWith(busca);
-        const iniciaB = campoB.startsWith(busca);
-        if (iniciaA && !iniciaB) return -1;
-        if (iniciaB && !iniciaA) return 1;
+            // A. Prioridade por Relevância do Código
+            if (codA === busca && codB !== busca) return -1;
+            if (codB === busca && codA !== busca) return 1;
 
-        // Regra 3: Ordem alfabética normal para o resto
-        return campoA.localeCompare(campoB, undefined, { numeric: true });
-    });
+            const iniciaA = codA.startsWith(busca);
+            const iniciaB = codB.startsWith(busca);
+            if (iniciaA && !iniciaB) return -1;
+            if (iniciaB && !iniciaA) return 1;
 
+            // B. Se os códigos empatarem na relevância, ordena por LOCAÇÃO
+            if (codA === codB) {
+                const locA = (a.locacao || "").toUpperCase();
+                const locB = (b.locacao || "").toUpperCase();
+                if (locA !== locB) {
+                    return locA.localeCompare(locB, undefined, { numeric: true });
+                }
+            }
+
+            // C. Se até a locação for igual, ordena por NOME (Alfabética)
+            return a.nome.toUpperCase().localeCompare(b.nome.toUpperCase());
+        });
+    }
     renderizarTabela(resultados);
 }
 
@@ -855,46 +873,69 @@ function alternarAlertas() {
     }
 }
 
-const inputGtin = document.getElementById('modal-gtin-novo');
-const inputQuantidade = document.getElementById('modal-qtdo');
-const btnFoto = document.querySelector('.btn-adicionar-foto');
-const inputArquivo = document.getElementById('foto-input'); // O input file escondido
-const btnConfirmar = document.getElementById('modal-btn-confirmar');
+// --- FLUXO DE FOCO: MODAL NORMAL (CONFERÊNCIA) ---
+// 1. Enter no GTIN Novo -> Pula para Quantidade
+// --- FLUXO DE NAVEGAÇÃO POR TECLADO (MODAL CONFERÊNCIA) ---
 
-if (inputGtin && inputQuantidade) {
-    // 1. Enter no GTIN -> Pula para Quantidade
-    inputGtin.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            inputQuantidade.focus();
-            inputQuantidade.select();
+document.addEventListener('keydown', function (e) {
+    const focado = document.activeElement;
+
+    // 1. GTIN NOVO -> QUANTIDADE (ENTER)
+    if (e.key === 'Enter' && focado.id === 'modal-gtin-novo') {
+        e.preventDefault();
+        const inputQtd = document.getElementById('modal-qtdo');
+        if (inputQtd) {
+            inputQtd.focus();
+            inputQtd.select();
         }
-    });
-
-    // 2. Enter na Quantidade -> Pula para o Botão de Foto
-    inputQuantidade.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            if (btnFoto) btnFoto.focus();
-        }
-    });
-
-    // 3. Após Adicionar a Foto -> Pula para o Confirmar
-    // O evento 'change' dispara quando você termina de selecionar as fotos
-    if (inputArquivo) {
-        inputArquivo.addEventListener('change', function () {
-            // Pequeno delay para dar tempo do sistema processar a miniatura
-            setTimeout(() => {
-                if (btnConfirmar) {
-                    btnConfirmar.focus();
-                    // Destaque visual no botão Confirmar
-                    btnConfirmar.style.outline = "3px solid #fff";
-                    btnConfirmar.style.boxShadow = "0 0 10px rgba(0,0,156,0.5)";
-                }
-            }, 500);
-        });
     }
+
+    // 2. QUANTIDADE -> BOTÃO FOTO (ENTER)
+    else if (e.key === 'Enter' && focado.id === 'modal-qtdo') {
+        e.preventDefault();
+        const btnFoto = document.querySelector('.btn-adicionar-foto');
+        if (btnFoto) {
+            btnFoto.focus();
+            btnFoto.style.outline = "2px solid #00009C";
+        }
+    }
+
+    // 3. BOTÃO FOTO -> DECISÃO (ENTER PULA | ESPAÇO ABRE)
+    else if (focado.classList.contains('btn-adicionar-foto')) {
+        // ENTER: Pula para o Confirmar
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const btnConf = document.getElementById('modal-btn-confirmar');
+            if (btnConf) {
+                btnConf.focus();
+                btnConf.style.outline = "2px solid #00009C";
+            }
+        }
+        // ESPAÇO: Abre a Câmera/Arquivos
+        else if (e.key === ' ' || e.code === 'Space') {
+            e.preventDefault();
+            const inputArq = document.getElementById('foto-input');
+            if (inputArq) inputArq.click();
+        }
+    }
+});
+
+// 4. APÓS TIRAR A FOTO -> FOCO AUTOMÁTICO NO CONFIRMAR
+// (Fora do keydown porque o 'change' é um evento do sistema de arquivos)
+const inputArq = document.getElementById('foto-input');
+if (inputArq) {
+    inputArq.addEventListener('change', function () {
+        setTimeout(() => {
+            const btnConf = document.getElementById('modal-btn-confirmar');
+            if (btnConf) {
+                btnConf.focus();
+                btnConf.style.outline = "2px solid #00009C";
+            }
+        }, 500);
+    });
 }
+
+
 
 function alternarTrocaLocacao() {
     const btn = document.getElementById('modal-status-loc');
@@ -954,39 +995,48 @@ function fecharSugestoes() {
 }
 
 function buscarSugestoes() {
-    const termo = (document.getElementById('novo-codigo').value || '').trim().toUpperCase();
+    const inputCod = document.getElementById('novo-codigo');
+    const termo = (inputCod.value || '').trim().toUpperCase();
     const lista = document.getElementById('sugestoes-lista');
+
+    const seloAlt = document.getElementById('selo-alternativo');
+    const chkAlt = document.getElementById('novo-is-alternativo');
 
     if (!lista) return;
 
+    // --- LÓGICA DO SELO "A" VERDE ---
+    const codigoExiste = itens.some(i => i.codigo.toUpperCase() === termo);
+
+    if (codigoExiste && termo.length > 0) {
+        if (seloAlt) seloAlt.style.display = 'flex';
+        if (chkAlt) chkAlt.checked = true;
+    } else {
+        if (seloAlt) seloAlt.style.display = 'none';
+        if (chkAlt) chkAlt.checked = false;
+    }
+
+    // Se campo vazio, esconde a lista
     if (termo.length < 1 || itens.length === 0) {
         lista.style.display = 'none';
         return;
     }
 
-    // 1. Filtra todos que batem com o termo
-    let filtrados = itens.filter(i => i.codigo.includes(termo) || i.nome.includes(termo));
+    // 1. Filtro e 2. Ordenação (Prioridade Exata)
+    let filtrados = itens.filter(i =>
+        i.codigo.toUpperCase().includes(termo) ||
+        i.nome.toUpperCase().includes(termo)
+    );
 
-    // 2. ORDENAÇÃO POR RELEVÂNCIA
     filtrados.sort((a, b) => {
         const codA = a.codigo.toUpperCase();
         const codB = b.codigo.toUpperCase();
-
-        // Prioridade 1: Código Exato (Ex: "17" no topo)
         if (codA === termo && codB !== termo) return -1;
         if (codB === termo && codA !== termo) return 1;
-
-        // Prioridade 2: Começa com o termo (Ex: "170" antes de "917")
-        const iniciaA = codA.startsWith(termo);
-        const iniciaB = codB.startsWith(termo);
-        if (iniciaA && !iniciaB) return -1;
-        if (iniciaB && !iniciaA) return 1;
-
-        // Prioridade 3: Ordem alfabética para o resto
+        if (codA.startsWith(termo) && !codB.startsWith(termo)) return -1;
+        if (codB.startsWith(termo) && !codA.startsWith(termo)) return 1;
         return codA.localeCompare(codB, undefined, { numeric: true });
     });
 
-    // 3. Remove duplicatas e limita a 12
     const vistos = new Set();
     const resultados = filtrados.filter(i => {
         if (vistos.has(i.codigo)) return false;
@@ -999,13 +1049,14 @@ function buscarSugestoes() {
         return;
     }
 
+    // 3. Renderização da lista (Usando seus tamanhos 11px/10px)
     lista.innerHTML = resultados.map(item => `
         <div onclick="selecionarSugestao('${item.codigo.replace(/'/g, "\\'")}','${item.nome.replace(/'/g, "\\'")}','${(item.marca || '').replace(/'/g, "\\'")}','${(item.gtinAntigo || '').replace(/'/g, "\\'")}')"
-            style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee; line-height:1.3;"
+            style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee; line-height:1.3; background:#fff;"
             onmouseover="this.style.background='#eef0ff'"
             onmouseout="this.style.background='#fff'">
-            <span style="font-weight:700; color:#00009C;">${item.codigo}</span>
-            <span style="color:#888; margin-left:8px; font-size:10px;">${item.nome}</span>
+            <div style="font-weight:700; color:#00009C; font-size:11px;">${item.codigo}</div>
+            <div style="color:#888; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.nome}</div>
         </div>
     `).join('');
 

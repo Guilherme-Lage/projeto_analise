@@ -20,22 +20,25 @@
             <button class="botao btn-primario" onclick="document.getElementById('entrada-arquivo').click()">Abrir
                 CSV</button>
             <button class="botao btn-primario" onclick="exportarCSV()">⬇ Exportar</button>
-
-            <!-- Menu Hambúrguer / Configurações -->
             <div class="menu-config">
                 <button class="botao btn-engrenagem" onclick="alternarMenuConfig()">⚙️</button>
                 <div class="dropdown-config" id="dropdown-config">
-                    <button class="item-menu" onclick="abrirModalNovo()">➕ Novo Item</button>
-                    <button class="item-menu" id="btn-ocultar" onclick="alternarConferidos()">Mostrar Todos</button>
-                    <button class="item-menu" id="btn-ocultar-alertas" onclick="alternarAlertas()">Ocultar
-                        Alertas</button>
+
+
+
                     <button class="item-menu" id="btn-modo-desmarcar" onclick="solicitarSenhaEdicao()">Modo
                         Desmarcar</button>
                     <hr>
-                    <button class="item-menu btn-perigo" id="btn-limpar" onclick="limpar()" style="display:none">Novo
-                        Romaneio (Limpar)</button>
+                    <button class="item-menu btn-perigo" id="btn-limpar" onclick="limpar()" style="display:none">Nova
+                        Conferencia (Limpar)</button>
                 </div>
             </div>
+            <button class="botao btn-primario" id="btn-ocultar" onclick="alternarConferidos()">Mostrar Todos</button>
+            <button class="botao btn-primario" id="btn-ocultar-alertas"
+                onclick="alternarAlertas()">OcultarAlertas</button>
+            <button class="botao btn-primario" onclick="abrirModalNovo()">➕</button>
+            <!-- Menu Hambúrguer / Configurações -->
+
         </div>
         <div class="log-container">
             <div class="log-header" id="log-header">
@@ -55,7 +58,7 @@
                 <option value="todos">TUDO</option>
                 <option value="prateleira">ESTANTE</option>
                 <option value="locacao">LOCAÇÃO</option>
-                <option value="marca">MARCA</option>
+                <option value="nome">DESCRIÇÃO</option>
                 <option value="codigo">CÓDIGO</option>
             </select>
 
@@ -209,18 +212,21 @@
                 </div>
 
                 <!-- Código com autocomplete -->
-                <div class="modal-row" style="border-bottom:1.5px solid #e8e8e8; position:relative;">
-                    <div class="modal-cell" style="overflow:visible;">
-                        <span class="modal-cell-label">Código</span>
-                        <input class="modal-cell-input" id="novo-codigo" type="text" placeholder="Digite para buscar..."
-                            oninput="buscarSugestoes()" autocomplete="off">
-                        <div id="sugestoes-lista" style="
-                            display:none; position:absolute; left:0; right:0; top:100%;
-                            background:#fff; border:1.5px solid #1a1a1a; border-top:none;
-                            z-index:2000; max-height:200px; overflow-y:auto;
-                            font-family:'IBM Plex Mono',monospace; font-size:11px;"></div>
-                    </div>
-                </div>
+<div class="modal-row row-codigo-wrapper">
+    <div class="modal-cell cell-codigo">
+        <span class="modal-cell-label">Código</span>
+        <input class="modal-cell-input" id="novo-codigo" type="text" placeholder="Buscar..." oninput="buscarSugestoes()" autocomplete="off">
+        <div id="sugestoes-lista" class="sugestoes-autocomplete"></div>
+    </div>
+
+    <!-- Selo com texto "ITEM ALTERNATIVO" e o Quadrado "A" -->
+    <div id="selo-alternativo" class="indicador-alt-completo">
+        <span class="texto-alternativo">ITEM ALTERNATIVO</span>
+        <div class="quadrado-A">A</div>
+        <input type="checkbox" id="novo-is-alternativo" style="display: none;">
+    </div>
+</div>
+
 
                 <!-- Nome (preenchido automaticamente ou livre) -->
                 <div class="modal-row" style="border-bottom:1.5px solid #e8e8e8;">
@@ -273,14 +279,7 @@
                             onchange="carregarFotosNovo(this)" style="display:none">
                     </div>
                 </div>
-                <div class="modal-row"
-                    style="padding: 10px; background: #eef0ff; display: flex; align-items: center; gap: 10px; border-bottom: 1.5px solid #e8e8e8;">
-                    <input type="checkbox" id="novo-is-alternativo" style="width: 18px; height: 18px; cursor: pointer;">
-                    <label for="novo-is-alternativo"
-                        style="font-size: 11px; font-weight: 700; color: #00009C; cursor: pointer; text-transform: uppercase;">
-                        Marcar como Item Alternativo
-                    </label>
-                </div>
+        
 
 
             </div>

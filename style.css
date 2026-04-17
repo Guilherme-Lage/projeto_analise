@@ -80,6 +80,7 @@ h1 {
     outline: none;
 }
 
+
 .barra-busca:focus {
     border-color: #00009C;
 }
@@ -334,9 +335,9 @@ td.col-codigo {
     padding: 0;
 }
 
-.modal-row {
-    display: grid;
-    border-bottom: 1.5px solid #e8e8e8;
+.modal-row:focus-within {
+    background-color: #ccc;
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
 }
 
 .modal-row:last-child {
@@ -518,8 +519,8 @@ td.col-codigo {
 }
 
 .modal-btn-confirmar.ja-conferido {
-  background: #0000c8;
-      color: #fff;
+    background: #0000c8;
+    color: #fff;
 }
 
 .modal-btn-confirmar.ja-conferido:hover {
@@ -762,8 +763,8 @@ tbody tr.conferido {
 }
 
 .quadrado.status-pendente {
-    background: #ffeb3b;
-    border-color: #fbc02d;
+
+    border-color: #ccc;
     color: #000;
     font-weight: bold;
 }
@@ -913,14 +914,18 @@ tbody tr.conferido {
 }
 
 .quadrado.ok-alternativo {
-    background: #00009C; /* Azul Hontec */
-    border-color: #00009C;
+    background: #2d7a4a;
+    /* Azul Hontec */
+    border-color: #2d7a4a;
     color: #fff;
+
 }
+
 /* Container dos botões principais */
 .linha-botoes {
     display: flex;
-    flex-wrap: nowrap; /* Garante que fiquem na mesma linha */
+    flex-wrap: nowrap;
+    /* Garante que fiquem na mesma linha */
     gap: 8px;
     margin-bottom: 16px;
     width: 100%;
@@ -928,8 +933,9 @@ tbody tr.conferido {
 
 /* Botões Abrir e Exportar: ocupam o espaço que sobrar */
 .btn-primario {
-    flex: 1; 
-    height: 44px; /* Altura ideal para o dedo no celular */
+    flex: 1;
+    height: 44px;
+    /* Altura ideal para o dedo no celular */
 
     border-color: #00009C;
     font-weight: 600;
@@ -940,7 +946,8 @@ tbody tr.conferido {
 /* Container do Menu */
 .menu-config {
     position: relative;
-    flex-shrink: 0; /* Impede que a engrenagem esmague */
+    flex-shrink: 0;
+    /* Impede que a engrenagem esmague */
 }
 
 /* Botão da Engrenagem */
@@ -963,13 +970,15 @@ tbody tr.conferido {
     display: none;
     position: absolute;
     right: 0;
-    top: 50px; /* Logo abaixo do botão */
+    top: 50px;
+    /* Logo abaixo do botão */
     background: #fff;
     border: 2px solid #1a1a1a;
     border-radius: 6px;
-    width: 240px; /* Largura boa para leitura no celular */
+    width: 240px;
+    /* Largura boa para leitura no celular */
     z-index: 2000;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
 .dropdown-config.aberto {
@@ -990,8 +999,15 @@ tbody tr.conferido {
     text-transform: uppercase;
 }
 
-.item-menu:last-child { border-bottom: none; }
-.item-menu:active { background: #f0f4ff; } /* Efeito de clique no celular */
+.item-menu:last-child {
+    border-bottom: none;
+}
+
+.item-menu:active {
+    background: #f0f4ff;
+}
+
+/* Efeito de clique no celular */
 
 /* Estilo para o botão de Desmarcar quando ativo dentro do menu */
 .item-menu.ativo {
@@ -1000,18 +1016,22 @@ tbody tr.conferido {
 }
 
 @media (max-width: 700px) {
+
     /* Container em Grid para botões iguais */
     .linha-botoes {
         display: grid;
-        grid-template-columns: 1fr 1fr 50px; /* Abrir, Exportar e Engrenagem */
+        grid-template-columns: 1fr 1fr 50px;
+        /* Abrir, Exportar e Engrenagem */
         gap: 8px;
         width: 100%;
         margin-bottom: 12px;
     }
 
     /* Ajusta altura de todos os botões para ficarem iguais */
-    .botao, .btn-engrenagem {
-        height: 46px !important; /* Altura padrão para o dedo */
+    .botao,
+    .btn-engrenagem {
+        height: 46px !important;
+        /* Altura padrão para o dedo */
         margin-bottom: 0 !important;
         display: flex;
         align-items: center;
@@ -1026,7 +1046,8 @@ tbody tr.conferido {
     }
 
     .btn-engrenagem {
-        width: 100%; /* Ocupa os 50px definidos no grid */
+        width: 100%;
+        /* Ocupa os 50px definidos no grid */
         background: #fff;
         font-size: 20px;
     }
@@ -1035,16 +1056,101 @@ tbody tr.conferido {
     .dropdown-config {
         position: absolute;
         right: 0;
-        top: 50px; /* Logo abaixo do botão */
-        width: 220px; /* Largura confortável para os itens */
+        top: 50px;
+        /* Logo abaixo do botão */
+        width: 220px;
+        /* Largura confortável para os itens */
         display: none;
         background: #fff;
         border: 2px solid #1a1a1a;
         z-index: 3000;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
     }
-    
+
     .dropdown-config.aberto {
         display: block;
     }
+}
+
+.row-codigo-wrapper {
+    display: flex !important;
+    align-items: flex-end;
+    border-bottom: 1.5px solid #e8e8e8;
+    background: #fff;
+}
+
+.cell-codigo {
+    flex: 1;
+    position: relative;
+    border-right: 1.5px solid #e8e8e8;
+}
+
+.indicador-alt {
+    display: none;
+    /* Inicia escondido */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 45px;
+    background: #f9f9f9;
+    pointer-events: none;
+}
+
+.label-alt {
+    font-size: 8px;
+    font-weight: 800;
+    color: #2d7a4a;
+    margin-bottom: 2px;
+}
+
+.indicador-alt-completo {
+    display: none;
+    /* Inicia escondido, o JS liga */
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    height: 45px;
+    background: #f0f7f1;
+    /* Verde bem clarinho de fundo */
+    border-left: 1.5px solid #e8e8e8;
+    flex-shrink: 0;
+    /* Impede que o selo seja espremido */
+    pointer-events: none;
+}
+
+.texto-alternativo {
+    font-size: 12px;
+    font-weight: 800;
+    color: #2d7a4a;
+    white-space: nowrap;
+    /* Garante que o texto fique em uma linha só */
+}
+
+.quadrado-A {
+    width: 22px;
+    height: 22px;
+    background: #2d7a4a;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 3px;
+}
+
+/* Estilo da lista de busca (Tamanhos Originais) */
+.sugestoes-autocomplete {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    background: #fff;
+    border: 1.5px solid #1a1a1a;
+    z-index: 2000;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
