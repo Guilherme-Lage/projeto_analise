@@ -21,15 +21,27 @@
                 CSV</button>
             <button class="botao btn-primario" onclick="exportarCSV()">⬇ Exportar</button>
             <div class="menu-config">
-                <button class="botao btn-engrenagem" onclick="alternarMenuConfig()">⚙️</button>
+                <button class="botao btn-engrenagem menu-config item-config" onclick="alternarMenuConfig()">⚙️</button>
                 <div class="dropdown-config" id="dropdown-config">
-                 
+
                     <button class="item-menu" onclick="abrirLegenda()">Legenda de Status</button>
                     <button class="item-menu" id="btn-modo-desmarcar" onclick="solicitarSenhaEdicao()">Modo
                         Desmarcar</button>
                     <hr>
+
+
                     <button class="item-menu btn-perigo" id="btn-limpar" onclick="limpar()" style="display:none">Nova
                         Conferencia (Limpar)</button>
+                    <div class="log-container">
+                        <div class="log-header" id="log-header">
+                            <span>🕒 ÚLTIMAS AÇÕES</span>
+                            <span id="log-seta">▼</span>
+                        </div>
+                        <div id="log-lista"
+                            style="display:none; max-height: 120px; overflow-y: auto; border:1px solid #1a1a1a; border-top:none; background:#fff; font-size:11px;">
+                            <!-- Itens aparecerão aqui -->
+                        </div>
+                    </div>
                 </div>
             </div>
             <button class="botao btn-primario" id="btn-ocultar" onclick="alternarConferidos()">Mostrar Todos</button>
@@ -42,38 +54,33 @@
         <!-- Indicador de sincronização -->
         <div style="text-align:right; font-size:11px; color:#888; margin-bottom:4px;">
             <span id="sync-indicador" title="Status da sincronização" style="cursor:help;">⚪</span>
-            <span id="sync-label" style="margin-left:4px;">sync</span>
+
         </div>
 
-        <div class="log-container">
-            <div class="log-header" id="log-header">
-                <span>🕒 ÚLTIMAS AÇÕES</span>
-                <span id="log-seta">▼</span>
-            </div>
-            <div id="log-lista"
-                style="display:none; max-height: 120px; overflow-y: auto; border:1px solid #1a1a1a; border-top:none; background:#fff; font-size:11px;">
-                <!-- Itens aparecerão aqui -->
-            </div>
-        </div>
 
         <input type="file" id="entrada-arquivo" accept=".csv" onchange="carregarCSV(this)">
 
-        <div class="grupo-busca">
-            <select id="filtro-tipo" onchange="filtrar()">
-                <option value="todos">TUDO</option>
-                <option value="prateleira">ESTANTE</option>
-                <option value="locacao">LOCAÇÃO</option>
-                <option value="nome">DESCRIÇÃO</option>
-                <option value="codigo">CÓDIGO</option>
-            </select>
+       <div class="grupo-busca">
+    <!-- Adicionado syncPublicar() no onchange -->
+    <select id="filtro-tipo" onchange="filtrar(); syncPublicar();">
+        <option value="todos">TUDO</option>
+        <option value="prateleira">ESTANTE</option>
+        <option value="locacao">LOCAÇÃO</option>
+        <option value="nome">DESCRIÇÃO</option>
+        <option value="codigo">CÓDIGO</option>
+    </select>
 
-            <div style="position: relative; flex: 1; display: flex; align-items: center;width: 100%;">
-                <input type="text" class="barra-busca" id="busca" placeholder="BUSCAR..." oninput="filtrar()"
-                    style="padding-right: 35px;">
-                <button onclick="voltarListaCompleta()"
-                    style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 16px; color: #888;">✕</button>
-            </div>
-        </div>
+    <div style="position: relative; flex: 1; display: flex; align-items: center;width: 100%;">
+        <!-- Adicionado syncPublicar() no oninput -->
+        <input type="text" class="barra-busca" id="busca" placeholder="BUSCAR..." 
+            oninput="filtrar(); syncPublicar();"
+            style="padding-right: 35px;">
+            
+        <button onclick="voltarListaCompleta(); syncPublicar();"
+            style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 16px; color: #888;">✕</button>
+    </div>
+</div>
+
         <div class="contador" id="contador">
             <span id="cnt-conf">0</span> / <span id="cnt-total">0</span> itens conferidos
         </div>

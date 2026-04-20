@@ -281,17 +281,31 @@ function carregarCSV(input) {
     if (!arquivo) return;
 
     const leitor = new FileReader();
+    
     leitor.onload = (e) => {
-        // Tenta UTF-8 primeiro; se vier com caracteres estranhos, tenta latin-1
-        processarCSV(e.target.result, arquivo.name);
+        let texto = e.target.result;
+
+        // Se o texto contém "Ã", é quase certeza que um arquivo UTF-8 foi lido errado.
+        // Então releremos como UTF-8 para corrigir o Ç e os acentos.
+        if (texto.includes('Ã') || texto.includes('Â')) {
+            const leitorUTF = new FileReader();
+            leitorUTF.onload = (e2) => processarCSV(e2.target.result, arquivo.name);
+            leitorUTF.readAsText(arquivo, 'UTF-8');
+        } else {
+            processarCSV(texto, arquivo.name);
+        }
     };
+
+    // Começa tentando ler como ISO-8859-1
     leitor.readAsText(arquivo, 'ISO-8859-1');
 }
+                                                 
 
 function limparAspas(val) {
     if (!val) return '';
     return val.replace(/^"|"$/g, '').trim();
 }
+
 function parseLinhaCsv(linha, sep) {
     const resultado = [];
     let campo = '';
@@ -718,62 +732,59 @@ async function confirmarModal() {
         if (idxModalAtual < 0) return;
         const item = itens[idxModalAtual];
 
-        // 1. Captura GTIN e Marca
+        // 1. Captura GTIN, Marca e Quantidade
         const elGtinN = document.getElementById('modal-gtin-novo');
         const elMarca = document.getElementById('modal-marca');
+        const elQtd = document.getElementById('modal-qtdo');
+        
         if (elGtinN) item.gtinNovo = elGtinN.value.trim().toUpperCase();
         if (elMarca) item.marca = elMarca.value.trim().toUpperCase();
-
-        // 2. Captura Quantidade
-        const elQtd = document.getElementById('modal-qtdo');
         if (elQtd) item.qtdConferida = elQtd.value !== '' ? parseFloat(elQtd.value) : 0;
 
-        // 3. Gerencia TROCA DE LOCAÇÃO (Ordem Corrigida)
+        // 2. Gerencia TROCA DE LOCAÇÃO
         const inputNova = document.getElementById('modal-locacao-nova');
         const btn = document.getElementById('modal-status-loc');
 
         if (btn.textContent === "X" && inputNova.value.trim() !== "") {
-            // Salva a original APENAS se ainda não existir uma salva
-            if (!item.locacaoOriginal) {
-                item.locacaoOriginal = item.locacao;
-            }
+            if (!item.locacaoOriginal) item.locacaoOriginal = item.locacao;
             item.trocaLocacao = true;
             item.locacaoNova = inputNova.value.trim().toUpperCase();
-            item.locacao = item.locacaoNova; // Atualiza para a tabela
+            item.locacao = item.locacaoNova;
         } else {
-            // Se desmarcar o X, volta para a original
-            if (item.locacaoOriginal) {
-                item.locacao = item.locacaoOriginal;
-            }
+            if (item.locacaoOriginal) item.locacao = item.locacaoOriginal;
             item.trocaLocacao = false;
             item.locacaoNova = "";
         }
 
-        // 4. Salva a Data (Use o nome dataHoraRegistro para bater com seu abrirModal)
-        const agora = new Date();
+        // 3. Status e Data
         item.conferido = true;
-        item.dataHoraRegistro = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        item.dataHoraRegistro = new Date().toLocaleDateString('pt-BR') + ' ' + 
+                                new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-        // 5. Finalização
-        try { adicionarLog(item); } catch (e) { console.log("Erro no log"); }
-
+        // 4. Log e Backup
+        try { adicionarLog(item); } catch (e) { }
         await salvarBackup();
-        syncPublicar(); // Sincroniza com celular
-        renderizarTabela(itens);
-        atualizarContador();
+
+        // 5. FECHAR MODAL PRIMEIRO
         fecharModal();
 
-        // 6. Lógica de Contexto (Preservada)
+        // 6. RESTAURAR CONTEXTO (ESTANTE) ANTES DE SINCRONIZAR
         ultimaLocacaoClicada = "";
         if (contextoAnterior) {
             document.getElementById('filtro-tipo').value = contextoAnterior.tipo;
             document.getElementById('busca').value = contextoAnterior.valor;
-            filtrar();
+            filtrar(); // Aplica o filtro da estante localmente
         } else {
             document.getElementById('busca').value = "";
             document.getElementById('filtro-tipo').value = "todos";
             renderizarTabela(itens);
         }
+
+        // 7. SINCRONIZAR (Agora ele vai ler os inputs já restaurados para 'estante')
+        syncPublicar(); 
+        
+        atualizarContador();
+
     } catch (erro) {
         console.error("Erro ao confirmar:", erro);
         fecharModal();
@@ -1365,9 +1376,9 @@ function syncAplicarEstado(dados) {
     }
 
     // Renderiza respeitando o filtro atual
-    const busca = document.getElementById('busca')?.value?.trim() || '';
-    if (busca) {
-        filtrar();
+        const buscaTexto = document.getElementById('busca')?.value?.trim() || '';
+    if (buscaTexto !== "") {
+        filtrar(); 
     } else {
         renderizarTabela(itens);
     }
