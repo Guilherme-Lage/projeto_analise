@@ -444,6 +444,7 @@ function processarCSV(texto, nomeArquivo) {
         elInfo.style.display = 'block';
         elInfo.textContent = `${nomeArquivo} — ${itens.length} itens${ehExportado ? ' (exportado)' : ''}`;
         document.getElementById('btn-limpar').style.display = 'inline-block';
+        syncPublicar(); // Publica novo CSV para o celular
 
     } catch (erro) {
         console.error("Erro ao processar CSV:", erro);
@@ -757,6 +758,7 @@ async function confirmarModal() {
         try { adicionarLog(item); } catch (e) { console.log("Erro no log"); }
 
         await salvarBackup();
+        syncPublicar(); // Sincroniza com celular
         renderizarTabela(itens);
         atualizarContador();
         fecharModal();
@@ -810,6 +812,7 @@ window.onload = async () => {
                 }
             }
         };
+        syncIniciar(); // Inicia sincronização PC <-> Celular
         configurarFocoNovoItem();
         request.onerror = () => console.error("Erro ao buscar backup no IndexedDB");
 
@@ -825,7 +828,8 @@ async function limpar() {
     const tx = db.transaction("estoque", "readwrite");
     tx.objectStore("estoque").delete("backup_atual");
 
-    tx.oncomplete = () => {
+    tx.oncomplete = async () => {
+        try { await fetch(`${SYNC_URL}/sync/limpar`, { method: 'POST' }); } catch(e){}
         location.reload();
     };
 }
@@ -1224,6 +1228,7 @@ async function confirmarNovo() {
     itens.sort((a, b) => a.locacao.localeCompare(b.locacao, undefined, { numeric: true }));
 
     await salvarBackup();
+    syncPublicar(); // Sincroniza com celular
 
     // Mostra o item adicionado na tabela
     document.getElementById('btn-limpar').style.display = 'inline-block';
@@ -1299,36 +1304,133 @@ async function resetarItem() {
         try { adicionarLog(item, "RESETADO"); } catch (e) { }
 
         await salvarBackup();
+        syncPublicar();
         renderizarTabela(itens);
         atualizarContador();
         fecharModal();
     }
 }
 
-async function resetarItem() {
-    const item = itens[idxModalAtual];
 
-    if (confirm(`DESMARCAR: Deseja apagar a conferência do item ${item.codigo}?`)) {
-        item.conferido = false;
-        item.qtdConferida = null;
-        item.gtinNovo = "";
-        item.dataHoraRegistro = null;
-        item.fotos = [];
-
-        if (item.locacaoOriginal) {
-            item.locacao = item.locacaoOriginal;
-            item.locacaoNova = "";
-            item.trocaLocacao = false;
-        }
-
-        await salvarBackup();
-        renderizarTabela(itens);
-        atualizarContador();
-        fecharModal();
-    }
-}
 
 let fotosTempNovo = []; // Armazena as fotos antes de salvar o item
+
+// ═══════════════════════════════════════════════════════════════
+//  SINCRONIZAÇÃO BIDIRECIONAL (PC <-> CELULAR)
+// ═══════════════════════════════════════════════════════════════
+
+const SYNC_URL = window.location.origin;
+let syncVersaoLocal = 0;
+let syncAtivo = false;
+let ehDispositivo = null;
+
+function detectarDispositivo() {
+    ehDispositivo = window.innerWidth < 800 ? 'celular' : 'pc';
+    console.log(`[SYNC] Dispositivo: ${ehDispositivo}`);
+}
+
+// ── Publica estado + busca atual para o servidor ──
+// Chamado por TODOS os dispositivos após qualquer mudança
+async function syncPublicar() {
+    try {
+        const busca = document.getElementById('busca')?.value || '';
+        const filtro = document.getElementById('filtro-tipo')?.value || 'todos';
+        const res = await fetch(`${SYNC_URL}/sync/publicar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itens, versao: syncVersaoLocal, busca, filtro })
+        });
+        if (res.ok) {
+            const d = await res.json();
+            syncVersaoLocal = d.versao;
+        }
+    } catch (e) { /* offline */ }
+}
+
+// ── Aplica estado recebido do servidor ──
+function syncAplicarEstado(dados) {
+    if (dados.versao <= syncVersaoLocal) return;
+    syncVersaoLocal = dados.versao;
+    itens = dados.itens;
+
+    // Aplica busca/filtro sincronizados
+    if (dados.busca !== undefined) {
+        const elBusca = document.getElementById('busca');
+        const elFiltro = document.getElementById('filtro-tipo');
+        if (elBusca && elFiltro) {
+            elBusca.value = dados.busca || '';
+            if (dados.filtro) elFiltro.value = dados.filtro;
+            ultimaLocacaoClicada = ''; // reset para não confundir o clique duplo
+        }
+    }
+
+    // Renderiza respeitando o filtro atual
+    const busca = document.getElementById('busca')?.value?.trim() || '';
+    if (busca) {
+        filtrar();
+    } else {
+        renderizarTabela(itens);
+    }
+    atualizarContador();
+
+    if (itens.length > 0) {
+        const btnLimpar = document.getElementById('btn-limpar');
+        if (btnLimpar) btnLimpar.style.display = 'inline-block';
+    }
+
+    console.log(`[SYNC] Estado aplicado — v${dados.versao} — ${itens.length} itens`);
+}
+
+// ── Polling curto (2s) — funciona nos DOIS dispositivos ──
+async function syncIniciarPolling() {
+    if (syncAtivo) return;
+    syncAtivo = true;
+    const indicador = document.getElementById('sync-indicador');
+    console.log('[SYNC] Polling bidirecional iniciado...');
+
+    while (syncAtivo) {
+        try {
+            if (indicador) { indicador.textContent = '🔄'; }
+            const res = await fetch(`${SYNC_URL}/sync/estado?versao=${syncVersaoLocal}`, {
+                signal: AbortSignal.timeout(5000)
+            });
+            if (res.ok) {
+                const dados = await res.json();
+                if (indicador) indicador.textContent = '🟢';
+                if (dados.versao > syncVersaoLocal && dados.itens) {
+                    syncAplicarEstado(dados);
+                }
+            }
+        } catch (e) {
+            if (indicador) indicador.textContent = '🔴';
+        }
+        // Intervalo curto: 2s
+        await new Promise(r => setTimeout(r, 2000));
+    }
+}
+
+// ── Ao carregar: busca estado do servidor se tela vazia ──
+async function syncVerificarAoCarregar() {
+    try {
+        const res = await fetch(`${SYNC_URL}/sync/estado?versao=0`, {
+            signal: AbortSignal.timeout(3000)
+        });
+        if (!res.ok) return;
+        const dados = await res.json();
+        if (dados.itens && dados.itens.length > 0 && itens.length === 0) {
+            syncAplicarEstado(dados);
+            const elInfo = document.getElementById('info-arquivo');
+            if (elInfo) { elInfo.style.display = 'block'; elInfo.textContent = 'Dados sincronizados do servidor'; }
+        }
+    } catch (e) { /* offline */ }
+}
+
+function syncIniciar() {
+    detectarDispositivo();
+    // Ambos os dispositivos verificam ao carregar E fazem polling
+    syncVerificarAoCarregar().then(() => syncIniciarPolling());
+}
+// FIM SINCRONIZAÇÃO
 
 function carregarFotosNovo(input) {
     if (!input.files || input.files.length === 0) return;
