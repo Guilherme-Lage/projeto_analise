@@ -281,7 +281,7 @@ function carregarCSV(input) {
     if (!arquivo) return;
 
     const leitor = new FileReader();
-    
+
     leitor.onload = (e) => {
         let texto = e.target.result;
 
@@ -299,7 +299,7 @@ function carregarCSV(input) {
     // Começa tentando ler como ISO-8859-1
     leitor.readAsText(arquivo, 'ISO-8859-1');
 }
-                                                 
+
 
 function limparAspas(val) {
     if (!val) return '';
@@ -346,21 +346,21 @@ function splitLinhasCSV(texto) {
     if (atual.trim()) linhas.push(atual);
     return linhas;
 }
-
 function processarCSV(texto, nomeArquivo) {
     try {
         const linhas = splitLinhasCSV(texto);
         if (linhas.length < 2) { alert('Arquivo CSV vazio ou inválido.'); return; }
 
         const sep = linhas[0].includes('|') ? '|' : (linhas[0].includes(';') ? ';' : ',');
-
         const cabecalho = parseLinhaCsv(linhas[0], sep).map(v => v.toUpperCase().trim());
         const idx = (nome) => cabecalho.findIndex(c => c.includes(nome.toUpperCase()));
 
         const ehExportado = idx('STATUS') >= 0 && idx('LOCACAO') >= 0 && idx('CODIGO') >= 0;
-
         itens = [];
 
+        // Captura o índice da coluna UTILIZACAO globalmente
+        const iUtilizacao = cabecalho.findIndex(c => c.includes('UTILIZACAO_ITEM') || c === 'UTILIZACAO');
+        console.log("Índice da Utilização detectado:", iUtilizacao);
         if (ehExportado) {
             // ── CSV EXPORTADO ───────────────────────────────────────────
             const iStatus = idx('STATUS');
@@ -374,7 +374,6 @@ function processarCSV(texto, nomeArquivo) {
             const iGtinNovo = idx('GTIN_NOVO');
             const iData = idx('DATA_HORA');
 
-            // Detecta colunas de fotos (FOTO_1, FOTO_2, ...)
             const fotoCols = cabecalho.reduce((acc, nome, i) => {
                 if (/^FOTO_\d+$/.test(nome)) acc.push(i);
                 return acc;
@@ -392,6 +391,7 @@ function processarCSV(texto, nomeArquivo) {
                     locacao: (iLocacao >= 0 ? cols[iLocacao] : '').toUpperCase(),
                     codigo: (iCodigo >= 0 ? cols[iCodigo] : '').toUpperCase(),
                     nome: (iNome >= 0 ? cols[iNome] : '').toUpperCase(),
+                    utilizacao: iUtilizacao >= 0 ? cols[iUtilizacao] : '', // CAPTURA NO EXPORTADO
                     qtd: parseFloat(qtdRaw.replace(',', '.')) || 0,
                     gtinAntigo: (iGtinAntig >= 0 ? cols[iGtinAntig] : '').toUpperCase(),
                     gtinNovo: (iGtinNovo >= 0 ? cols[iGtinNovo] : '').toUpperCase(),
@@ -432,6 +432,7 @@ function processarCSV(texto, nomeArquivo) {
                     locacao: locacao.toUpperCase(),
                     codigo: codigo.toUpperCase(),
                     nome: (iNome >= 0 ? cols[iNome] : '---').toUpperCase(),
+                    utilizacao: iUtilizacao >= 0 ? cols[iUtilizacao] : '', // CAPTURA NO ORIGINAL
                     qtd: parseFloat((iQtd >= 0 ? cols[iQtd] : '0').replace(',', '.')) || 0,
                     gtinAntigo: (iGtin >= 0 ? cols[iGtin] : '---').toUpperCase(),
                     gtinNovo: '',
@@ -458,13 +459,14 @@ function processarCSV(texto, nomeArquivo) {
         elInfo.style.display = 'block';
         elInfo.textContent = `${nomeArquivo} — ${itens.length} itens${ehExportado ? ' (exportado)' : ''}`;
         document.getElementById('btn-limpar').style.display = 'inline-block';
-        syncPublicar(); // Publica novo CSV para o celular
+        syncPublicar();
 
     } catch (erro) {
         console.error("Erro ao processar CSV:", erro);
         alert("Erro ao ler o arquivo: " + erro.message);
     }
 }
+
 function renderizarTabela(lista) {
     const corpo = document.getElementById('corpo');
     if (!corpo) return;
@@ -648,10 +650,11 @@ function exportarCSV() {
 
         const maxFotos = 5;
 
-        // 1. Cabeçalho com DATA_HORA após o GTIN_NOVO
+        // 1. Cabeçalho com UTILIZACAO após o NOME
         let colunas = [
-            'STATUS', 'MARCA', 'CODIGO', 'NOME', 'QTD_SISTEMA',
-            'QTD_CONFERIDA', 'LOCACAO', 'LOCACAO_NOVA', 'GTIN_ANTIGO', 'GTIN_NOVO', 'DATA_HORA'
+            'STATUS', 'MARCA', 'CODIGO', 'NOME', 'UTILIZACAO_ITEM', // Adicionado aqui
+            'QTD_SISTEMA', 'QTD_CONFERIDA', 'LOCACAO', 'LOCACAO_NOVA',
+            'GTIN_ANTIGO', 'GTIN_NOVO', 'DATA_HORA'
         ];
 
         for (let i = 1; i <= maxFotos; i++) {
@@ -664,7 +667,6 @@ function exportarCSV() {
         itens.forEach(item => {
             const qtdC = item.qtdConferida != null ? item.qtdConferida : '';
 
-            // --- LÓGICA DE STATUS: Prioriza "ALTERNATIVO" se a flag existir ---
             let statusExport = 'PENDENTE';
             if (item.ehAlternativo) {
                 statusExport = 'ALTERNATIVO';
@@ -673,17 +675,18 @@ function exportarCSV() {
             }
 
             let registro = [
-                statusExport,             // Status corrigido (OK / PENDENTE / ALTERNATIVO)
+                statusExport,
                 item.marca || '',
                 item.codigo,
                 `"${item.nome}"`,
+                `"${item.utilizacao || ''}"`, // Garante que o valor capturado seja escrito
                 item.qtd,
                 qtdC,
                 item.locacaoOriginal || item.locacao,
                 item.locacaoNova || '',
                 item.gtinAntigo || '',
                 item.gtinNovo || '',
-                item.dataHoraRegistro || '' 
+                item.dataHoraRegistro || ''
             ];
 
             // 3. Adiciona as fotos
@@ -718,6 +721,7 @@ function exportarCSV() {
 
 
 
+
 function alternarConferidos() {
     ocultar = !ocultar;
     document.getElementById('btn-ocultar').textContent = ocultar ? 'Mostrar Todos' : 'Ocultar Conferidos';
@@ -736,7 +740,7 @@ async function confirmarModal() {
         const elGtinN = document.getElementById('modal-gtin-novo');
         const elMarca = document.getElementById('modal-marca');
         const elQtd = document.getElementById('modal-qtdo');
-        
+
         if (elGtinN) item.gtinNovo = elGtinN.value.trim().toUpperCase();
         if (elMarca) item.marca = elMarca.value.trim().toUpperCase();
         if (elQtd) item.qtdConferida = elQtd.value !== '' ? parseFloat(elQtd.value) : 0;
@@ -758,8 +762,8 @@ async function confirmarModal() {
 
         // 3. Status e Data
         item.conferido = true;
-        item.dataHoraRegistro = new Date().toLocaleDateString('pt-BR') + ' ' + 
-                                new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        item.dataHoraRegistro = new Date().toLocaleDateString('pt-BR') + ' ' +
+            new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
         // 4. Log e Backup
         try { adicionarLog(item); } catch (e) { }
@@ -781,8 +785,8 @@ async function confirmarModal() {
         }
 
         // 7. SINCRONIZAR (Agora ele vai ler os inputs já restaurados para 'estante')
-        syncPublicar(); 
-        
+        syncPublicar();
+
         atualizarContador();
 
     } catch (erro) {
@@ -840,7 +844,7 @@ async function limpar() {
     tx.objectStore("estoque").delete("backup_atual");
 
     tx.oncomplete = async () => {
-        try { await fetch(`${SYNC_URL}/sync/limpar`, { method: 'POST' }); } catch(e){}
+        try { await fetch(`${SYNC_URL}/sync/limpar`, { method: 'POST' }); } catch (e) { }
         location.reload();
     };
 }
@@ -1098,7 +1102,7 @@ function configurarFocoNovoItem() {
     const nQtd = document.getElementById('novo-qtdo');
     const nBtnFoto = document.querySelector('#modal-novo-overlay .btn-adicionar-foto');
     const nInputArq = document.getElementById('novo-foto-input');
-    const nBtnConf = document.getElementById('btnadd'); 
+    const nBtnConf = document.getElementById('btnadd');
 
     if (!nLoc) return;
 
@@ -1123,10 +1127,10 @@ function configurarFocoNovoItem() {
 
     // 3. GTIN Novo -> Quantidade
     nGtinN.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { 
-            e.preventDefault(); 
-            nQtd.focus(); 
-            nQtd.select(); 
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            nQtd.focus();
+            nQtd.select();
         }
     });
 
@@ -1376,9 +1380,9 @@ function syncAplicarEstado(dados) {
     }
 
     // Renderiza respeitando o filtro atual
-        const buscaTexto = document.getElementById('busca')?.value?.trim() || '';
+    const buscaTexto = document.getElementById('busca')?.value?.trim() || '';
     if (buscaTexto !== "") {
-        filtrar(); 
+        filtrar();
     } else {
         renderizarTabela(itens);
     }
