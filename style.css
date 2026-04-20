@@ -1014,6 +1014,53 @@ tbody tr.conferido {
     background: #fff9c4;
     font-weight: bold;
 }
+/* Container Principal */
+.linha-botoes {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+    align-items: center;
+}
+
+/* Identificação de cada item para o Grid */
+.linha-botoes > button:nth-child(1) { grid-area: abrir; }
+.linha-botoes > button:nth-child(2) { grid-area: exportar; }
+.menu-config                       { grid-area: config; } /* A Div da engrenagem */
+.linha-botoes > button:nth-child(4) { grid-area: todos; }
+.linha-botoes > button:nth-child(5) { grid-area: alertas; }
+.linha-botoes > button:nth-child(6) { grid-area: novo; }
+
+/* --- NO PC (Telas grandes) --- */
+@media (min-width: 769px) {
+    .linha-botoes {
+        /* 6 colunas iguais */
+        grid-template-columns: repeat(6, 1fr);
+        /* Config no final da linha */
+        grid-template-areas: 
+            "abrir exportar todos alertas novo config";
+    }
+}
+
+/* --- NO CELULAR (Telas pequenas) --- */
+@media (max-width: 768px) {
+    .linha-botoes {
+        /* 3 colunas para os botões ficarem largos e fáceis de clicar */
+        grid-template-columns: repeat(3, 1fr);
+        /* Config em terceiro na primeira linha */
+        grid-template-areas: 
+            "abrir exportar config"
+            "todos alertas novo";
+    }
+}
+
+/* Ajuste para os botões ocuparem todo o espaço do grid */
+.linha-botoes button {
+    width: 100%;
+    height: 100%;
+    min-height: 40px; /* Melhora o clique no celular */
+}
+
+
 
 @media (max-width: 700px) {
 
@@ -1038,6 +1085,7 @@ tbody tr.conferido {
         justify-content: center;
         padding: 0 !important;
         font-size: 11px;
+        order: 3;
     }
 
     /* Engrenagem no canto direito */

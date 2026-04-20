@@ -623,48 +623,56 @@ function atualizarContador() {
 
 
 function filtrar() {
-    const busca = (document.getElementById('busca').value || '').trim().toUpperCase();
+    const buscaRaw = (document.getElementById('busca').value || '').trim().toUpperCase();
     const tipo = document.getElementById('filtro-tipo').value;
 
-    if (busca === "") {
+    if (buscaRaw === "") {
         renderizarTabela(itens);
         return;
     }
 
-    // 1. Filtra os itens normalmente
+    // Criamos o array de termos para a busca flexível
+    const termos = buscaRaw.split(" ").filter(t => t.length > 0);
+
+    // 1. Filtra os itens com lógica de múltiplos termos
     let resultados = itens.filter(i => {
         const cod = (i.codigo || "").toUpperCase();
         const nom = (i.nome || "").toUpperCase();
         const loc = (i.locacao || "").toUpperCase();
 
-        if (tipo === 'codigo') return cod.includes(busca);
-        if (tipo === 'nome') return nom.includes(busca);
-        if (tipo === 'locacao') return loc.includes(busca);
+        // Função auxiliar: verifica se TODOS os termos digitados estão no texto alvo
+        const bateComTodos = (textoAlvo) => termos.every(t => textoAlvo.includes(t));
 
-        // Busca geral (todos)
-        return cod.includes(busca) || nom.includes(busca) || loc.includes(busca);
+        if (tipo === 'codigo') return bateComTodos(cod);
+        if (tipo === 'nome') return bateComTodos(nom);
+        if (tipo === 'locacao') return bateComTodos(loc);
+
+        // Busca geral (todos): os termos podem estar espalhados entre código, nome ou locação
+        // Ex: "CABO AZUL" - CABO pode estar no nome e AZUL na locação
+        return termos.every(t => cod.includes(t) || nom.includes(t) || loc.includes(t));
     });
+
+    // --- MANTENDO EXATAMENTE SUA LÓGICA DE ORDENAÇÃO ABAIXO ---
 
     if (tipo === 'nome') {
         resultados.sort((a, b) => {
             const nomA = (a.nome || "").toUpperCase();
             const nomB = (b.nome || "").toUpperCase();
-
-            // Ordem Alfabética simples de A a Z
             return nomA.localeCompare(nomB);
         });
     }
+    
     if (tipo === 'codigo') {
         resultados.sort((a, b) => {
             const codA = a.codigo.toUpperCase();
             const codB = b.codigo.toUpperCase();
 
-            // A. Prioridade por Relevância do Código
-            if (codA === busca && codB !== busca) return -1;
-            if (codB === busca && codA !== busca) return 1;
+            // A. Prioridade por Relevância do Código (usando a busca completa)
+            if (codA === buscaRaw && codB !== buscaRaw) return -1;
+            if (codB === buscaRaw && codA !== buscaRaw) return 1;
 
-            const iniciaA = codA.startsWith(busca);
-            const iniciaB = codB.startsWith(busca);
+            const iniciaA = codA.startsWith(buscaRaw);
+            const iniciaB = codB.startsWith(buscaRaw);
             if (iniciaA && !iniciaB) return -1;
             if (iniciaB && !iniciaA) return 1;
 
@@ -901,26 +909,33 @@ function gerenciarCliqueItem(globalIdx) {
     const seletorFiltro = document.getElementById('filtro-tipo');
 
     if (ultimaLocacaoClicada !== item.locacao) {
-
         const tipoAtual = seletorFiltro.value;
         const valorAtual = campoBusca.value.trim();
 
         if (tipoAtual === 'prateleira' && valorAtual !== '') {
             contextoAnterior = { tipo: tipoAtual, valor: valorAtual };
         } else if (tipoAtual !== 'locacao') {
-
             contextoAnterior = valorAtual !== '' ? { tipo: tipoAtual, valor: valorAtual } : null;
         }
 
         ultimaLocacaoClicada = item.locacao;
         seletorFiltro.value = "locacao";
         campoBusca.value = item.locacao;
+        
         filtrar();
-    } else {
 
+        // --- NOVA LÓGICA: Abre direto se for único na locação ---
+        // Verificamos quantos itens restaram na lista após o filtrar()
+        const itensNaLocacao = itens.filter(i => i.locacao === item.locacao);
+        if (itensNaLocacao.length === 1) {
+            abrirModal(globalIdx);
+        }
+        
+    } else {
         abrirModal(globalIdx);
     }
 }
+
 function voltarListaCompleta() {
     document.getElementById('busca').value = "";
     document.getElementById('filtro-tipo').value = "todos";
