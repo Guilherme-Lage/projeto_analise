@@ -1044,22 +1044,20 @@ tbody tr.conferido {
 /* --- NO CELULAR (Telas pequenas) --- */
 @media (max-width: 768px) {
     .linha-botoes {
-        /* 3 colunas para os botões ficarem largos e fáceis de clicar */
+
         grid-template-columns: repeat(3, 1fr);
-        /* Config em terceiro na primeira linha */
         grid-template-areas: 
             "abrir exportar config"
             "todos alertas novo";
     }
 }
 
-/* Ajuste para os botões ocuparem todo o espaço do grid */
+
 .linha-botoes button {
     width: 100%;
     height: 100%;
-    min-height: 40px; /* Melhora o clique no celular */
+    min-height: 40px;
 }
-
 
 
 @media (max-width: 700px) {

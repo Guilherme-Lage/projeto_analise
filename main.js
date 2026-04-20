@@ -7,7 +7,7 @@ let contextoAnterior = null; // { tipo, valor } — para voltar após confirmar'
 let modoEdicaoAtivo = false;
 const dbName = "HontecDB";
 const storeName = "estoque";
-let ultimoBipTime = 0; 
+let ultimoBipTime = 0;
 function abrirDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open("HontecDB", 1);
@@ -126,18 +126,7 @@ function abrirModal(globalIdx) {
             const elGtinNovo = document.getElementById('modal-gtin-novo');
             const elQtd = document.getElementById('modal-qtdo');
 
-            if (elGtinNovo) {
-                elGtinNovo.focus();
-                elGtinNovo.select();
-
-                elGtinNovo.onkeydown = (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        elQtd.focus();
-                        elQtd.select();
-                    }
-                };
-            }
+           
 
             if (elQtd) {
                 elQtd.onkeydown = (e) => {
@@ -163,11 +152,11 @@ function abrirModal(globalIdx) {
 
                             let contagemAtual = parseFloat(item.qtdConferida) || 0;
                             item.qtdConferida = contagemAtual + 1;
-                            
+
                             elQtd.value = item.qtdConferida;
-                            elQtd.select(); 
+                            elQtd.select();
                             console.log("Bip detectado: +1");
-                        } 
+                        }
                         // Se o campo estiver vazio ou for número (Enter manual do teclado)
                         else if (valorNoCampo === "" || !isNaN(valorNoCampo)) {
                             confirmarModal();
@@ -258,7 +247,6 @@ function carregarFotos(input) {
 
                 if (lidos === arquivos.length) {
                     renderizarGaleria(item.fotos);
-                    // Aqui você chama a função do IndexedDB que criamos antes
                     salvarBackup();
                 }
             };
@@ -271,7 +259,7 @@ function carregarFotos(input) {
 }
 let historicoLog = [];
 
-// Coloque esta função fora de qualquer outra
+
 function adicionarLog(item) {
     const lista = document.getElementById('log-lista');
     if (!lista) return; // Se não achar a lista, não faz nada e não trava o código
@@ -295,7 +283,7 @@ function adicionarLog(item) {
 }
 
 
-// Lógica do botão (coloque isso no final do arquivo ou no window.onload)
+
 document.addEventListener('click', function (e) {
     if (e.target && (e.target.id === 'log-header' || e.target.parentElement.id === 'log-header')) {
         const lista = document.getElementById('log-lista');
@@ -323,7 +311,7 @@ function carregarCSV(input) {
     const arquivo = input.files[0];
     if (!arquivo) return;
 
-    const leitor = new FileReader(); 
+    const leitor = new FileReader();
 
     leitor.onload = (e) => {
         let texto = e.target.result;
@@ -541,7 +529,7 @@ function renderizarTabela(lista) {
 
             if (ehAlternativo) {
                 // Estilo para Item Alternativo
-                tr.style.background = "#eef0ff"; // Azul claro para destacar a linha
+                tr.style.background = "#eef0ff";
                 classeQuadrado = "ok-alternativo";
                 iconeStatus = "A";
             } else {
@@ -661,7 +649,7 @@ function filtrar() {
             return nomA.localeCompare(nomB);
         });
     }
-    
+
     if (tipo === 'codigo') {
         resultados.sort((a, b) => {
             const codA = a.codigo.toUpperCase();
@@ -701,9 +689,9 @@ function exportarCSV() {
 
         const maxFotos = 5;
 
-        // 1. Cabeçalho com UTILIZACAO após o NOME
+        // 1. Cabeçalho CSV
         let colunas = [
-            'STATUS', 'MARCA', 'CODIGO', 'NOME', 'UTILIZACAO_ITEM', // Adicionado aqui
+            'STATUS', 'MARCA', 'CODIGO', 'NOME', 'UTILIZACAO_ITEM',
             'QTD_SISTEMA', 'QTD_CONFERIDA', 'LOCACAO', 'LOCACAO_NOVA',
             'GTIN_ANTIGO', 'GTIN_NOVO', 'DATA_HORA'
         ];
@@ -835,7 +823,7 @@ async function confirmarModal() {
             renderizarTabela(itens);
         }
 
-        // 7. SINCRONIZAR (Agora ele vai ler os inputs já restaurados para 'estante')
+        // 7. SINCRONIZA
         syncPublicar();
 
         atualizarContador();
@@ -921,16 +909,15 @@ function gerenciarCliqueItem(globalIdx) {
         ultimaLocacaoClicada = item.locacao;
         seletorFiltro.value = "locacao";
         campoBusca.value = item.locacao;
-        
+
         filtrar();
 
-        // --- NOVA LÓGICA: Abre direto se for único na locação ---
         // Verificamos quantos itens restaram na lista após o filtrar()
         const itensNaLocacao = itens.filter(i => i.locacao === item.locacao);
         if (itensNaLocacao.length === 1) {
             abrirModal(globalIdx);
         }
-        
+
     } else {
         abrirModal(globalIdx);
     }
@@ -956,7 +943,7 @@ function alternarAlertas() {
     if (buscaVal === "") {
         renderizarTabela(itens);
     } else {
-        filtrar(); // Se houver busca, re-filtra para aplicar a regra
+        filtrar();
     }
 }
 
@@ -1045,10 +1032,8 @@ function alternarTrocaLocacao() {
     }
 }
 
-
-// ═══════════════════════════════════════════════════════════════
 //  MODAL NOVO ITEM 
-// ═══════════════════════════════════════════════════════════════
+
 
 function abrirModalNovo() {
     fotosTempNovo = []; // Reseta o ar
@@ -1289,7 +1274,7 @@ async function confirmarNovo() {
         gtinNovo: gtinNov,
         marca,
         conferido: true,
-        ehAlternativo: isAlt, // <--- NOVA PROPRIEDADE
+        ehAlternativo: isAlt,
         qtdConferida: qtd,
         dataHoraRegistro: dt,
         fotos: [],
@@ -1321,7 +1306,7 @@ document.addEventListener('click', function (e) {
     }
 });
 
-// Enter no campo código: confirma 1ª sugestão ou vai para nome
+
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
         fecharModalNovo();
@@ -1388,9 +1373,8 @@ async function resetarItem() {
 
 let fotosTempNovo = []; // Armazena as fotos antes de salvar o item
 
-// ═══════════════════════════════════════════════════════════════
 //  SINCRONIZAÇÃO BIDIRECIONAL (PC <-> CELULAR)
-// ═══════════════════════════════════════════════════════════════
+
 
 const SYNC_URL = window.location.origin;
 let syncVersaoLocal = 0;
@@ -1500,7 +1484,6 @@ async function syncVerificarAoCarregar() {
 
 function syncIniciar() {
     detectarDispositivo();
-    // Ambos os dispositivos verificam ao carregar E fazem polling
     syncVerificarAoCarregar().then(() => syncIniciarPolling());
 }
 // FIM SINCRONIZAÇÃO
@@ -1559,7 +1542,6 @@ function alternarMenuConfig() {
     menu.classList.toggle('aberto');
 }
 
-// Fecha o menu ao clicar em qualquer item lá dentro
 document.querySelectorAll('.item-menu').forEach(botao => {
     botao.addEventListener('click', () => {
         document.getElementById('dropdown-config').classList.remove('aberto');
@@ -1576,7 +1558,6 @@ document.addEventListener('click', function (e) {
 });
 function abrirLegenda() {
     document.getElementById('modal-legenda').classList.add('aberto');
-    // Fecha o menu da engrenagem ao abrir a legenda
     document.getElementById('dropdown-config').classList.remove('aberto');
 }
 
