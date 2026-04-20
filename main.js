@@ -7,7 +7,7 @@ let contextoAnterior = null; // { tipo, valor } — para voltar após confirmar'
 let modoEdicaoAtivo = false;
 const dbName = "HontecDB";
 const storeName = "estoque";
-
+let ultimoBipTime = 0; 
 function abrirDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open("HontecDB", 1);
@@ -43,6 +43,7 @@ async function salvarBackup() {
         console.error("Erro ao salvar no IndexedDB:", err);
     }
 }
+
 
 function abrirModal(globalIdx) {
     try {
@@ -97,41 +98,82 @@ function abrirModal(globalIdx) {
         // 7. Fotos
         renderizarGaleria(item.fotos || []);
 
-        // 8. Botão Dinâmico (CONFIRMAR / ALTERAR / REMOVER)
+        // 8. Botão Dinâmico
         const btnConf = document.getElementById('modal-btn-confirmar');
-
-        // Resetamos o evento de clique padrão
         btnConf.onclick = null;
 
         if (item.conferido) {
             if (typeof modoEdicaoAtivo !== 'undefined' && modoEdicaoAtivo) {
-                // MODO EDIÇÃO ATIVO: Botão vira REMOVER
                 btnConf.textContent = 'REMOVER';
-                btnConf.style.background = '#CC0000'; // Vermelho
+                btnConf.style.background = '#CC0000';
                 btnConf.onclick = () => resetarItem();
             } else {
-                // MODO NORMAL: Botão vira ALTERAR
                 btnConf.textContent = 'ALTERAR';
-                btnConf.style.background = '#00009C'; // Azul (ou a cor ja-conferido do seu CSS)
+                btnConf.style.background = '#00009C';
                 btnConf.onclick = () => confirmarModal();
             }
             btnConf.classList.add('ja-conferido');
         } else {
-            // ITEM NOVO: Sempre CONFIRMAR
             btnConf.textContent = 'CONFIRMAR';
-            btnConf.style.background = '#00009C'; // Azul padrão
+            btnConf.style.background = '#00009C';
             btnConf.classList.remove('ja-conferido');
             btnConf.onclick = () => confirmarModal();
         }
 
-        // 9. Abrir Modal e dar Foco
+        // 9. Abrir Modal e dar Foco com Trava de Bip Duplo (Debounce)
         document.getElementById('modal-overlay').classList.add('aberto');
         setTimeout(() => {
             const elGtinNovo = document.getElementById('modal-gtin-novo');
+            const elQtd = document.getElementById('modal-qtdo');
+
             if (elGtinNovo) {
                 elGtinNovo.focus();
                 elGtinNovo.select();
 
+                elGtinNovo.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        elQtd.focus();
+                        elQtd.select();
+                    }
+                };
+            }
+
+            if (elQtd) {
+                elQtd.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        const agora = Date.now();
+                        const intervalo = agora - ultimoBipTime;
+
+                        const valorNoCampo = elQtd.value.trim();
+                        const gtinReferencia = elGtinNovo.value.trim();
+
+                        // Se o valor for o GTIN (Bip da máquina)
+                        if (valorNoCampo === gtinReferencia && gtinReferencia !== "") {
+                            e.preventDefault();
+
+                            // BLOQUEIO: Se o intervalo for menor que 500ms, ignora o bip
+                            if (intervalo < 400) {
+                                console.warn("Bip duplo ignorado");
+                                elQtd.select();
+                                return;
+                            }
+
+                            ultimoBipTime = agora; // Atualiza o tempo do último bip válido
+
+                            let contagemAtual = parseFloat(item.qtdConferida) || 0;
+                            item.qtdConferida = contagemAtual + 1;
+                            
+                            elQtd.value = item.qtdConferida;
+                            elQtd.select(); 
+                            console.log("Bip detectado: +1");
+                        } 
+                        // Se o campo estiver vazio ou for número (Enter manual do teclado)
+                        else if (valorNoCampo === "" || !isNaN(valorNoCampo)) {
+                            confirmarModal();
+                        }
+                    }
+                };
             }
         }, 150);
 
@@ -139,6 +181,7 @@ function abrirModal(globalIdx) {
         console.error("Erro ao abrir modal:", erro);
     }
 }
+
 
 
 
@@ -280,7 +323,7 @@ function carregarCSV(input) {
     const arquivo = input.files[0];
     if (!arquivo) return;
 
-    const leitor = new FileReader();
+    const leitor = new FileReader(); 
 
     leitor.onload = (e) => {
         let texto = e.target.result;
