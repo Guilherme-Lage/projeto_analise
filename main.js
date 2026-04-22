@@ -126,8 +126,9 @@ function abrirModal(globalIdx) {
             const elGtinNovo = document.getElementById('modal-gtin-novo');
             const elQtd = document.getElementById('modal-qtdo');
 
-           
 
+            elGtinNovo.focus();
+            elGtinNovo.select();
             if (elQtd) {
                 elQtd.onkeydown = (e) => {
                     if (e.key === 'Enter') {
@@ -262,7 +263,7 @@ let historicoLog = [];
 
 function adicionarLog(item) {
     const lista = document.getElementById('log-lista');
-    if (!lista) return; // Se não achar a lista, não faz nada e não trava o código
+    if (!lista) return; 
 
     const agora = new Date();
     const hora = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -1040,7 +1041,7 @@ function abrirModalNovo() {
     const galeria = document.getElementById('novo-galeria-fotos');
     if (galeria) galeria.innerHTML = '';
     ['novo-locacao', 'novo-codigo', 'novo-nome', 'novo-marca',
-        'novo-gtin-antigo', 'novo-gtin-novo', 'novo-qtdo'].forEach(id => {
+        'novo-gtin-antigo', 'novo-gtin-novo', 'novo-qtdo',].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = '';
         });
@@ -1256,7 +1257,7 @@ async function confirmarNovo() {
     const qtdVal = document.getElementById('novo-qtdo').value;
     const qtd = qtdVal !== '' ? parseFloat(qtdVal) : 0;
 
-    const isAlt = document.getElementById('novo-is-alternativo')?.checked || false; // Captura o checkbox
+    const isAlt = document.getElementById('novo-is-alternativo')?.checked || false;
 
     if (!codigo) { alert('Código é obrigatório.'); return; }
     if (!locacao) { alert('Locação é obrigatória.'); return; }
@@ -1277,18 +1278,21 @@ async function confirmarNovo() {
         ehAlternativo: isAlt,
         qtdConferida: qtd,
         dataHoraRegistro: dt,
-        fotos: [],
+        // --- MUDANÇA AQUI: Agora ele pega as fotos que estão na memória temporária ---
+        fotos: [...fotosTempNovo], 
         adicionadoManualmente: true
     };
 
     itens.push(novoItem);
 
+    // Limpa as fotos temporárias para o próximo item não vir com a foto do anterior
+    fotosTempNovo = [];
+
     itens.sort((a, b) => a.locacao.localeCompare(b.locacao, undefined, { numeric: true }));
 
     await salvarBackup();
-    syncPublicar(); // Sincroniza com celular
+    syncPublicar();
 
-    // Mostra o item adicionado na tabela
     document.getElementById('btn-limpar').style.display = 'inline-block';
     renderizarTabela(itens);
     atualizarContador();
@@ -1296,15 +1300,6 @@ async function confirmarNovo() {
     fecharModalNovo();
     try { adicionarLog(novoItem); } catch (e) { }
 }
-
-// Fecha sugestões ao clicar fora
-document.addEventListener('click', function (e) {
-    const lista = document.getElementById('sugestoes-lista');
-    const input = document.getElementById('novo-codigo');
-    if (lista && input && !lista.contains(e.target) && e.target !== input) {
-        fecharSugestoes();
-    }
-});
 
 
 document.addEventListener('keydown', function (e) {
