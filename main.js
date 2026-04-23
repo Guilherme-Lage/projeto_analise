@@ -263,7 +263,7 @@ let historicoLog = [];
 
 function adicionarLog(item) {
     const lista = document.getElementById('log-lista');
-    if (!lista) return; 
+    if (!lista) return;
 
     const agora = new Date();
     const hora = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -419,17 +419,25 @@ function processarCSV(texto, nomeArquivo) {
                 const qtdRaw = iQtd >= 0 ? cols[iQtd] : '0';
                 const qtdConfRaw = iQtdConf >= 0 ? cols[iQtdConf] : '';
 
+                // --- NOVA CAPTURA DO STATUS ---
+                const statusLido = (iStatus >= 0 ? cols[iStatus] : '').toUpperCase();
+
                 itens.push({
                     locacao: (iLocacao >= 0 ? cols[iLocacao] : '').toUpperCase(),
                     codigo: (iCodigo >= 0 ? cols[iCodigo] : '').toUpperCase(),
                     nome: (iNome >= 0 ? cols[iNome] : '').toUpperCase(),
-                    utilizacao: iUtilizacao >= 0 ? cols[iUtilizacao] : '', // CAPTURA NO EXPORTADO
+                    utilizacao: iUtilizacao >= 0 ? cols[iUtilizacao] : '',
                     qtd: parseFloat(qtdRaw.replace(',', '.')) || 0,
                     gtinAntigo: (iGtinAntig >= 0 ? cols[iGtinAntig] : '').toUpperCase(),
                     gtinNovo: (iGtinNovo >= 0 ? cols[iGtinNovo] : '').toUpperCase(),
                     dataHoraRegistro: iData >= 0 ? cols[iData] : null,
                     marca: (iMarca >= 0 ? cols[iMarca] : '').toUpperCase(),
-                    conferido: iStatus >= 0 && cols[iStatus].toUpperCase() === 'OK',
+
+                    // ── CORREÇÃO AQUI ──────────────────────────────────────
+                    conferido: statusLido === 'OK' || statusLido === 'ALTERNATIVO',
+                    ehAlternativo: statusLido === 'ALTERNATIVO', // Agora ele sabe que veio da exportação
+                    // ───────────────────────────────────────────────────────
+
                     qtdConferida: qtdConfRaw !== '' ? parseFloat(qtdConfRaw) : null,
                     fotos: fotos
                 });
@@ -574,6 +582,8 @@ function renderizarTabela(lista) {
     });
 
     if (typeof atualizarContador === "function") atualizarContador();
+
+
 }
 
 
@@ -809,7 +819,11 @@ async function confirmarModal() {
         try { adicionarLog(item); } catch (e) { }
         await salvarBackup();
 
-        // 5. FECHAR MODAL PRIMEIRO
+        // ─── ADICIONADO AQUI: Guarda o índice antes dele virar -1 ───
+        const indiceParaRolar = idxModalAtual;
+        // ────────────────────────────────────────────────────────────
+
+        // 5. FECHAR MODAL PRIMEIRO (Aqui dentro roda o idxModalAtual = -1)
         fecharModal();
 
         // 6. RESTAURAR CONTEXTO (ESTANTE) ANTES DE SINCRONIZAR
@@ -828,7 +842,11 @@ async function confirmarModal() {
         syncPublicar();
 
         atualizarContador();
-
+        
+        // ─── ALTERADO AQUI: Passamos a variável temporária com o ID certo ───
+        centralizarItemNaTela(indiceParaRolar); 
+        // ───────────────────────────────────────────────────────────────────
+        
     } catch (erro) {
         console.error("Erro ao confirmar:", erro);
         fecharModal();
@@ -1279,7 +1297,7 @@ async function confirmarNovo() {
         qtdConferida: qtd,
         dataHoraRegistro: dt,
         // --- MUDANÇA AQUI: Agora ele pega as fotos que estão na memória temporária ---
-        fotos: [...fotosTempNovo], 
+        fotos: [...fotosTempNovo],
         adicionadoManualmente: true
     };
 
@@ -1563,3 +1581,28 @@ function fecharLegenda() {
 function fecharLegendaFora(e) {
     if (e.target === document.getElementById('modal-legenda')) fecharLegenda();
 }
+
+function centralizarItemNaTela(globalIdx) {
+    setTimeout(() => {
+        const linha = document.getElementById(`linha-${globalIdx}`);
+        
+        if (linha) {
+            linha.offsetHeight; 
+
+            const topoDaLinha = linha.getBoundingClientRect().top + window.scrollY;
+            const pontoCentral = topoDaLinha - (window.innerHeight / 2);
+
+            window.scrollTo({
+                top: pontoCentral,
+                behavior: 'smooth' 
+            });
+            
+            linha.style.transition = "background 0.3s";
+            linha.style.background = "#fff9c4"; 
+            setTimeout(() => { 
+                linha.style.background = ""; 
+            }, 1500);
+        }
+    }, 300); 
+}
+

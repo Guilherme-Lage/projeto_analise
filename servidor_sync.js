@@ -35,7 +35,7 @@ function aguardarMudanca(versaoCliente, timeoutMs = 3000) {
 
 // ── ROTAS ──────────────────────────────────────────────────────
 
-// 1. Qualquer dispositivo publica estado (PC ou celular)
+// 1. Qualquer dispositivo fica estado (PC ou celular)
 app.post('/sync/publicar', (req, res) => {
     const { itens, versao, busca, filtro } = req.body;
     if (!itens) return res.status(400).json({ erro: 'itens ausente' });
