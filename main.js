@@ -44,7 +44,6 @@ async function salvarBackup() {
     }
 }
 
-
 function abrirModal(globalIdx) {
     try {
         idxModalAtual = globalIdx;
@@ -120,46 +119,78 @@ function abrirModal(globalIdx) {
             btnConf.onclick = () => confirmarModal();
         }
 
-        // 9. Abrir Modal e dar Foco com Trava de Bip Duplo (Debounce)
+        // 9. Abrir Modal e dar Foco
         document.getElementById('modal-overlay').classList.add('aberto');
         setTimeout(() => {
             const elGtinNovo = document.getElementById('modal-gtin-novo');
             const elQtd = document.getElementById('modal-qtdo');
 
+            if (elGtinNovo) {
+                elGtinNovo.focus();
+                elGtinNovo.select();
 
-            elGtinNovo.focus();
-            elGtinNovo.select();
+                elGtinNovo.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault(); 
+                        e.stopPropagation(); // Impede que o evento vá para outros scripts
+                        
+                        if (elQtd) {
+                            elQtd.focus();
+                            elQtd.select();
+                        }
+                    }
+                };
+            }
+
             if (elQtd) {
+                // --- ADICIONADO AQUI: LIMPEZA AUTOMÁTICA AO BIPAR ---
+                elQtd.oninput = (e) => {
+                    const valorAtual = elQtd.value.trim();
+                    const gtinReferencia = elGtinNovo.value.trim();
+
+                    // Se o leitor começar a despejar o código de barras (mínimo 8 dígitos) e ele for igual ao GTIN
+                    if (valorAtual.length >= 8 && gtinReferencia !== "" && valorAtual.includes(gtinReferencia)) {
+                        // Limpa qualquer número antigo que estava na frente e deixa só o GTIN puro
+                        elQtd.value = gtinReferencia;
+                    }
+                };
+                // ---------------------------------------------------
+
                 elQtd.onkeydown = (e) => {
                     if (e.key === 'Enter') {
+                        e.preventDefault(); // IMPEDE O PULO PARA A FOTO DE VEZ
+                        e.stopPropagation();
+
                         const agora = Date.now();
                         const intervalo = agora - ultimoBipTime;
 
                         const valorNoCampo = elQtd.value.trim();
                         const gtinReferencia = elGtinNovo.value.trim();
 
-                        // Se o valor for o GTIN (Bip da máquina)
+                        // 1. VERIFICAÇÃO DO BIP (O que está no campo precisa ser o GTIN)
                         if (valorNoCampo === gtinReferencia && gtinReferencia !== "") {
-                            e.preventDefault();
-
-                            // BLOQUEIO: Se o intervalo for menor que 500ms, ignora o bip
+                            
+                            // TRAVA 1: Se o intervalo for menor que 400ms, ignora (Evita o bip duplo)
                             if (intervalo < 400) {
                                 console.warn("Bip duplo ignorado");
                                 elQtd.select();
                                 return;
                             }
 
-                            ultimoBipTime = agora; // Atualiza o tempo do último bip válido
+                            ultimoBipTime = agora; 
 
                             let contagemAtual = parseFloat(item.qtdConferida) || 0;
                             item.qtdConferida = contagemAtual + 1;
 
                             elQtd.value = item.qtdConferida;
-                            elQtd.select();
+                            elQtd.select(); 
                             console.log("Bip detectado: +1");
-                        }
-                        // Se o campo estiver vazio ou for número (Enter manual do teclado)
-                        else if (valorNoCampo === "" || !isNaN(valorNoCampo)) {
+                        } 
+                        // 2. ENTER MANUAL (Só fecha se o campo NÃO for igual ao GTIN e NÃO estiver vazio)
+                        else if (valorNoCampo !== "" && isNaN(valorNoCampo) === false) {
+                            
+                            // TRAVA 2: Para evitar fechar sem querer por velocidade do leitor,
+                            // só fechamos se o valor no campo for um número limpo (sem o GTIN junto)
                             confirmarModal();
                         }
                     }
@@ -171,6 +202,7 @@ function abrirModal(globalIdx) {
         console.error("Erro ao abrir modal:", erro);
     }
 }
+
 
 
 
