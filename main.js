@@ -131,9 +131,9 @@ function abrirModal(globalIdx) {
 
                 elGtinNovo.onkeydown = (e) => {
                     if (e.key === 'Enter') {
-                        e.preventDefault(); 
+                        e.preventDefault();
                         e.stopPropagation(); // Impede que o evento vá para outros scripts
-                        
+
                         if (elQtd) {
                             elQtd.focus();
                             elQtd.select();
@@ -169,7 +169,7 @@ function abrirModal(globalIdx) {
 
                         // 1. VERIFICAÇÃO DO BIP (O que está no campo precisa ser o GTIN)
                         if (valorNoCampo === gtinReferencia && gtinReferencia !== "") {
-                            
+
                             // TRAVA 1: Se o intervalo for menor que 400ms, ignora (Evita o bip duplo)
                             if (intervalo < 400) {
                                 console.warn("Bip duplo ignorado");
@@ -177,18 +177,18 @@ function abrirModal(globalIdx) {
                                 return;
                             }
 
-                            ultimoBipTime = agora; 
+                            ultimoBipTime = agora;
 
                             let contagemAtual = parseFloat(item.qtdConferida) || 0;
                             item.qtdConferida = contagemAtual + 1;
 
                             elQtd.value = item.qtdConferida;
-                            elQtd.select(); 
+                            elQtd.select();
                             console.log("Bip detectado: +1");
-                        } 
+                        }
                         // 2. ENTER MANUAL (Só fecha se o campo NÃO for igual ao GTIN e NÃO estiver vazio)
                         else if (valorNoCampo !== "" && isNaN(valorNoCampo) === false) {
-                            
+
                             // TRAVA 2: Para evitar fechar sem querer por velocidade do leitor,
                             // só fechamos se o valor no campo for um número limpo (sem o GTIN junto)
                             confirmarModal();
@@ -874,11 +874,11 @@ async function confirmarModal() {
         syncPublicar();
 
         atualizarContador();
-        
+
         // ─── ALTERADO AQUI: Passamos a variável temporária com o ID certo ───
-        centralizarItemNaTela(indiceParaRolar); 
+        centralizarItemNaTela(indiceParaRolar);
         // ───────────────────────────────────────────────────────────────────
-        
+
     } catch (erro) {
         console.error("Erro ao confirmar:", erro);
         fecharModal();
@@ -1617,24 +1617,109 @@ function fecharLegendaFora(e) {
 function centralizarItemNaTela(globalIdx) {
     setTimeout(() => {
         const linha = document.getElementById(`linha-${globalIdx}`);
-        
+
         if (linha) {
-            linha.offsetHeight; 
+            linha.offsetHeight;
 
             const topoDaLinha = linha.getBoundingClientRect().top + window.scrollY;
             const pontoCentral = topoDaLinha - (window.innerHeight / 2);
 
             window.scrollTo({
                 top: pontoCentral,
-                behavior: 'smooth' 
+                behavior: 'smooth'
             });
-            
+
             linha.style.transition = "background 0.3s";
-            linha.style.background = "#fff9c4"; 
-            setTimeout(() => { 
-                linha.style.background = ""; 
+            linha.style.background = "#fff9c4";
+            setTimeout(() => {
+                linha.style.background = "";
             }, 1500);
         }
-    }, 300); 
+    }, 300);
 }
 
+
+function abrirModalIAGemini() {
+      document.getElementById('modal-ia-overlay').classList.add('aberto');
+    
+   
+    const chaveFixa = '';
+    
+    document.getElementById('ia-gemini-key').value = chaveFixa;
+    
+    setTimeout(() => {
+        document.getElementById('ia-gtin').focus();
+    }, 150);
+}
+
+function fecharModalIA() {
+    document.getElementById('modal-ia-overlay').classList.remove('aberto');
+    document.getElementById('ia-gtin').value = '';
+    document.getElementById('ia-status').style.display = 'none';
+}
+
+function fecharModalIAFora(e) {
+    if (e.target === document.getElementById('modal-ia-overlay')) fecharModalIA();
+}
+async function buscarProdutoComGemini() {
+    const gtin = document.getElementById('ia-gtin').value.trim();
+    const statusDiv = document.getElementById('ia-status');
+    const btnRodar = document.getElementById('btn-rodar-ia');
+
+    if (!gtin) { alert("Por favor, insira o código de barras (GTIN)."); return; }
+
+    statusDiv.style.display = 'block';
+    statusDiv.textContent = "⏳ Pesquisando no Gemini...";
+    btnRodar.disabled = true;
+    btnRodar.style.opacity = '0.5';
+
+    try {
+        const response = await fetch(`${SYNC_URL}/sync/gemini`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gtin })
+        });
+
+        // Captura o texto puro primeiro para evitar quebrar no JSON
+        const textoPuro = await response.text();
+        
+        if (!response.ok) {
+            let msgErro = "Erro ao consultar o Gemini.";
+            try {
+                const erroObj = JSON.parse(textoPuro);
+                msgErro = erroObj.error || msgErro;
+            } catch(e) {
+                msgErro = textoPuro || msgErro;
+            }
+            throw new Error(msgErro);
+        }
+
+        // Se a resposta estiver vazia
+        if (!textoPuro.trim()) {
+            throw new Error("O servidor retornou uma resposta vazia.");
+        }
+
+        const data = JSON.parse(textoPuro);
+        const produto = data.produto;
+
+        fecharModalIA();
+        abrirModalNovo();
+        
+        setTimeout(() => {
+            document.getElementById('novo-codigo').value = gtin; 
+            document.getElementById('novo-nome').value = produto.nome.toUpperCase();
+            document.getElementById('novo-marca').value = produto.marca.toUpperCase();
+            document.getElementById('novo-gtin-novo').value = gtin;
+            
+            console.log("Descrição da IA:", produto.desc);
+            alert("✨ Produto encontrado pela IA e preenchido com sucesso!");
+        }, 300);
+
+    } catch (e) {
+        console.error(e);
+        statusDiv.textContent = `❌ Erro: ${e.message}`;
+    } finally {
+        btnRodar.disabled = false;
+        btnRodar.style.opacity = '1';
+    }
+}

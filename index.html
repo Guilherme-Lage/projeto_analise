@@ -19,6 +19,8 @@
             <!-- Botões que SEMPRE aparecem -->
             <button class="botao btn-primario" onclick="document.getElementById('entrada-arquivo').click()">Abrir
                 CSV</button>
+            <button class="botao btn-primario" onclick="abrirModalIAGemini()">🧠 Buscar por IA</button>
+
             <button class="botao btn-primario" onclick="exportarCSV()">⬇ Exportar</button>
             <div class="menu-config">
 
@@ -32,6 +34,7 @@
                     <hr>
                     <button class="item-menu btn-perigo" id="btn-limpar" onclick="limpar()" style="display:none">Nova
                         Conferencia (Limpar)</button>
+
                     <div class="log-container">
                         <div class="log-header" id="log-header">
                             <span>🕒 ÚLTIMAS AÇÕES</span>
@@ -45,7 +48,7 @@
                 </div>
             </div>
 
-            
+
             <button class="botao btn-primario" id="btn-ocultar" onclick="alternarConferidos()">Mostrar Todos</button>
             <button class="botao btn-primario" id="btn-ocultar-alertas"
                 onclick="alternarAlertas()">OcultarAlertas</button>
@@ -359,6 +362,36 @@
 
         </div>
     </div>
+
+        <!-- Modal IA Gemini -->
+    <div class="modal-overlay" id="modal-ia-overlay" onclick="fecharModalIAFora(event)">
+        <div class="modal" style="max-width: 400px; border: 2px solid #00009C;">
+            <div class="modal-header" style="background: #00009C; color: #fff;">
+                <span style="font-family: 'IBM Plex Mono', monospace; letter-spacing: 1px;">🧠 BUSCA INTELIGENTE (GEMINI)</span>
+                <button class="modal-fechar" onclick="fecharModalIA()" style="color: #fff;">✕</button>
+            </div>
+
+            <div class="modal-body" style="padding: 20px; background: #fff;">
+              
+
+                <div class="modal-cell" style="border-right: none; margin-bottom: 15px;">
+                    <span class="modal-cell-label" style="color: #00009C;">Código de Barras (GTIN / EAN)</span>
+                    <input class="modal-cell-input" id="ia-gtin" type="text" placeholder="Digite ou bipe o código..." style="border: 1.5px solid #ccc; padding: 8px; border-radius: 4px; margin-top: 5px;">
+                </div>
+
+                <!-- Painel de carregamento / Status -->
+                <div id="ia-status" style="display: none; text-align: center; font-size: 12px; color: #666; margin-bottom: 10px;">
+                    ⏳ Pesquisando no Gemini...
+                </div>
+            </div>
+
+            <div style="padding: 15px; display: flex; justify-content: space-between; background: #f9f9f9; border-top: 1px solid #eee;">
+                <button class="modal-btn-cancelar" style="width: 100px; height: 36px; font-size: 11px; border-radius: 4px; border: 1.5px solid #1a1a1a;" onclick="fecharModalIA()">FECHAR</button>
+                <button class="modal-btn-confirmar" id="btn-rodar-ia" style="width: 140px; height: 36px; font-size: 11px; border-radius: 4px; background: #00009C;" onclick="buscarProdutoComGemini()">CONSULTAR</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>

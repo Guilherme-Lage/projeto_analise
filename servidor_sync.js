@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-
+const fetch = require('node-fetch');
+const { GoogleGenAI } = require('@google/genai'); 
 const app = express();
 const PORT = 4000;
 
@@ -80,6 +81,71 @@ app.post('/sync/limpar', (req, res) => {
     console.log(`[SYNC] Limpo — v${estadoAtual.versao}`);
     res.json({ ok: true, versao: estadoAtual.versao });
 });
+app.post('/sync/gemini', async (req, res) => {
+    const { gtin } = req.body;
+    if (!gtin) return res.status(400).json({ error: 'GTIN ausente' });
+
+    const chaveFixa = '';
+
+    try {
+        const ai = new GoogleGenAI({ apiKey: chaveFixa });
+
+        // Blindamos o prompt pedindo para ele ser muito rígido no formato
+        const prompt = `Você é um catálogo automotivo avançado. 
+Primeiro, USE A PESQUISA GOOGLE para encontrar exatamente qual peça de carro corresponde ao código de barras/GTIN "${gtin}".
+
+Em seguida, você deve retornar OBRIGATORIAMENTE apenas um objeto JSON com as chaves exatas: "nome", "marca" e "desc".
+Não coloque mensagens de introdução, conclusão ou formatações como \`\`\`json. Responda APENAS o JSON.
+
+Estrutura esperada:
+{
+  "nome": "NOME COMERCIAL DO PRODUTO EM CAIXA ALTA",
+  "marca": "MARCA DO PRODUTO EM CAIXA ALTA",
+  "desc": "Breve descrição técnica de uso"
+}`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash', 
+            contents: prompt,
+            config: {
+                // Mantemos a pesquisa (isso resolve a busca das peças de carro)
+                tools: [{ googleSearch: {} }] 
+                
+                // ⚠️ A linha do responseMimeType foi REMOVIDA daqui para evitar o Erro 400
+            }
+        });
+
+        const textoResposta = response.text;
+
+        if (!textoResposta) {
+            return res.status(500).json({ error: "O Gemini não retornou uma resposta válida." });
+        }
+
+        console.log("Resposta bruta da IA:", textoResposta);
+
+        // 🛡️ Limpeza cirúrgica contra blocos de código Markdown que a IA gera
+        let jsonLimpo = textoResposta.trim();
+        jsonLimpo = jsonLimpo.replace(/```json/g, '');
+        jsonLimpo = jsonLimpo.replace(/```/g, '');
+        jsonLimpo = jsonLimpo.trim();
+
+        // Faz o parse manual do texto que sobrou
+        const produto = JSON.parse(jsonLimpo);
+
+        const respostaFinal = {
+            nome: produto.nome || "PEÇA NÃO ENCONTRADA",
+            marca: produto.marca || "NÃO ENCONTRADO",
+            desc: produto.desc || "Sem descrição cadastrada para este GTIN."
+        };
+
+        res.json({ ok: true, produto: respostaFinal });
+
+    } catch (e) {
+        console.error("Erro no processo da IA via SDK:", e);
+        res.status(500).json({ error: "Falha ao processar a requisição de autopeças. Tente novamente." });
+    }
+});
+
 
 app.listen(PORT, '0.0.0.0', () => {
     // Descobre o IP local para mostrar no terminal
