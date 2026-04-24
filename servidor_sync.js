@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-
+const fetch = require('node-fetch');
+const { GoogleGenAI } = require('@google/genai'); 
 const app = express();
 const PORT = 4000;
 
@@ -81,7 +82,6 @@ app.post('/sync/limpar', (req, res) => {
     res.json({ ok: true, versao: estadoAtual.versao });
 });
 
-<<<<<<< HEAD
 app.post('/sync/gemini', async (req, res) => {
     const { gtin } = req.body;
     if (!gtin) return res.status(400).json({ error: 'GTIN ausente' });
@@ -136,8 +136,7 @@ Se você não encontrar o produto correspondente ao código "${gtin}", preencha 
         res.status(500).json({ error: "Falha ao processar a requisição usando o SDK do Gemini." });
     }
 });
-=======
->>>>>>> parent of 78407da (commit39_IA)
+
 app.listen(PORT, '0.0.0.0', () => {
     // Descobre o IP local para mostrar no terminal
     const { networkInterfaces } = require('os');

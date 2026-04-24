@@ -1638,3 +1638,87 @@ function centralizarItemNaTela(globalIdx) {
     }, 300); 
 }
 
+function abrirModalIAGemini() {
+      document.getElementById('modal-ia-overlay').classList.add('aberto');
+    
+   
+    const chaveFixa = '';
+    
+    document.getElementById('ia-gemini-key').value = chaveFixa;
+    
+    setTimeout(() => {
+        document.getElementById('ia-gtin').focus();
+    }, 150);
+}
+
+function fecharModalIA() {
+    document.getElementById('modal-ia-overlay').classList.remove('aberto');
+    document.getElementById('ia-gtin').value = '';
+    document.getElementById('ia-status').style.display = 'none';
+}
+
+function fecharModalIAFora(e) {
+    if (e.target === document.getElementById('modal-ia-overlay')) fecharModalIA();
+}
+async function buscarProdutoComGemini() {
+    const gtin = document.getElementById('ia-gtin').value.trim();
+    const statusDiv = document.getElementById('ia-status');
+    const btnRodar = document.getElementById('btn-rodar-ia');
+
+    if (!gtin) { alert("Por favor, insira o código de barras (GTIN)."); return; }
+
+    statusDiv.style.display = 'block';
+    statusDiv.textContent = "⏳ Pesquisando no Gemini...";
+    btnRodar.disabled = true;
+    btnRodar.style.opacity = '0.5';
+
+    try {
+        const response = await fetch(`${SYNC_URL}/sync/gemini`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gtin })
+        });
+
+        // Captura o texto puro primeiro para evitar quebrar no JSON
+        const textoPuro = await response.text();
+        
+        if (!response.ok) {
+            let msgErro = "Erro ao consultar o Gemini.";
+            try {
+                const erroObj = JSON.parse(textoPuro);
+                msgErro = erroObj.error || msgErro;
+            } catch(e) {
+                msgErro = textoPuro || msgErro;
+            }
+            throw new Error(msgErro);
+        }
+
+        // Se a resposta estiver vazia
+        if (!textoPuro.trim()) {
+            throw new Error("O servidor retornou uma resposta vazia.");
+        }
+
+        const data = JSON.parse(textoPuro);
+        const produto = data.produto;
+
+        fecharModalIA();
+        abrirModalNovo();
+        
+        setTimeout(() => {
+            document.getElementById('novo-codigo').value = gtin; 
+            document.getElementById('novo-nome').value = produto.nome.toUpperCase();
+            document.getElementById('novo-marca').value = produto.marca.toUpperCase();
+            document.getElementById('novo-gtin-novo').value = gtin;
+            
+            console.log("Descrição da IA:", produto.desc);
+            alert("✨ Produto encontrado pela IA e preenchido com sucesso!");
+        }, 300);
+
+    } catch (e) {
+        console.error(e);
+        statusDiv.textContent = `❌ Erro: ${e.message}`;
+    } finally {
+        btnRodar.disabled = false;
+        btnRodar.style.opacity = '1';
+    }
+}
