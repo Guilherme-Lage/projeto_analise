@@ -86,7 +86,7 @@ app.post('/sync/gemini', async (req, res) => {
     const { gtin } = req.body;
     if (!gtin) return res.status(400).json({ error: 'GTIN ausente' });
 
-    const chaveFixa = 'AIzaSyDdcg0_dGdT7z1i_iUsN4IrmrSwJvh4sac';
+    const chaveFixa = '';
 
     try {
         // Inicializa o cliente do Gemini com a sua chave
