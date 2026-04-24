@@ -1638,7 +1638,10 @@ function centralizarItemNaTela(globalIdx) {
     }, 300);
 }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> d68ece9c8d4672927408e4cadb892c1a9931222e
 function abrirModalIAGemini() {
       document.getElementById('modal-ia-overlay').classList.add('aberto');
     
