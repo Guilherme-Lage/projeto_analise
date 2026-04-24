@@ -1242,3 +1242,17 @@ tbody tr.conferido {
     border-radius: 4px;
     font-size: 16px;
 }
+
+@media (max-width: 768px) {
+    .linha-botoes {
+        grid-template-columns: repeat(3, 1fr);
+        /* Adicionamos uma nova linha no grid para o botão da IA */
+        grid-template-areas: 
+            "abrir exportar config"
+            "todos alertas novo"
+            "ia . ."; /* O botão de IA entra aqui ocupando o canto inferior esquerdo */
+    }
+}
+
+/* Adicione a identificação da nova área do botão da IA */
+.linha-botoes > button:nth-child(7) { grid-area: ia; }
