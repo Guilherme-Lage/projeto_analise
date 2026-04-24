@@ -1,8 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const fetch = require('node-fetch');
-const { GoogleGenAI } = require('@google/genai'); 
+
 const app = express();
 const PORT = 4000;
 
@@ -44,7 +43,7 @@ app.post('/sync/publicar', (req, res) => {
     estadoAtual.itens = itens;
     estadoAtual.versao = Math.max(estadoAtual.versao, versao || 0) + 1;
     estadoAtual.ultimaAtualizacao = new Date().toISOString();
-    if (busca !== undefined) estadoAtual.busca = busca;
+    if (busca  !== undefined) estadoAtual.busca  = busca;
     if (filtro !== undefined) estadoAtual.filtro = filtro;
 
     console.log(`[SYNC] Publicado — v${estadoAtual.versao} — ${itens.length} itens — busca:"${estadoAtual.busca}"`);
@@ -58,10 +57,10 @@ app.get('/sync/estado', async (req, res) => {
         await aguardarMudanca(versaoCliente, 3000);
     }
     res.json({
-        versao: estadoAtual.versao,
-        itens: estadoAtual.itens,
-        busca: estadoAtual.busca,
-        filtro: estadoAtual.filtro,
+        versao:            estadoAtual.versao,
+        itens:             estadoAtual.itens,
+        busca:             estadoAtual.busca,
+        filtro:            estadoAtual.filtro,
         ultimaAtualizacao: estadoAtual.ultimaAtualizacao
     });
 });
@@ -82,6 +81,7 @@ app.post('/sync/limpar', (req, res) => {
     res.json({ ok: true, versao: estadoAtual.versao });
 });
 
+<<<<<<< HEAD
 app.post('/sync/gemini', async (req, res) => {
     const { gtin } = req.body;
     if (!gtin) return res.status(400).json({ error: 'GTIN ausente' });
@@ -136,6 +136,8 @@ Se você não encontrar o produto correspondente ao código "${gtin}", preencha 
         res.status(500).json({ error: "Falha ao processar a requisição usando o SDK do Gemini." });
     }
 });
+=======
+>>>>>>> parent of 78407da (commit39_IA)
 app.listen(PORT, '0.0.0.0', () => {
     // Descobre o IP local para mostrar no terminal
     const { networkInterfaces } = require('os');
