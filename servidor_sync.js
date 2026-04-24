@@ -2,9 +2,15 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fetch = require('node-fetch');
-const { GoogleGenAI } = require('@google/genai'); 
+const fs = require('fs');
+
 const app = express();
 const PORT = 4000;
+
+// ── COLOQUE SUA CHAVE AQUI ─────────────────────────────────────
+// Gere uma nova em: https://aistudio.google.com/app/apikey
+const GEMINI_API_KEY = 'AIzaSyCHh2wG_M7GHMSmkJrKxGHdEB-Y9j9PhTk';
+// ──────────────────────────────────────────────────────────────
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -36,7 +42,7 @@ function aguardarMudanca(versaoCliente, timeoutMs = 3000) {
 
 // ── ROTAS ──────────────────────────────────────────────────────
 
-// 1. Qualquer dispositivo fica estado (PC ou celular)
+// 1. Qualquer dispositivo publica estado (PC ou celular)
 app.post('/sync/publicar', (req, res) => {
     const { itens, versao, busca, filtro } = req.body;
     if (!itens) return res.status(400).json({ erro: 'itens ausente' });
@@ -44,7 +50,7 @@ app.post('/sync/publicar', (req, res) => {
     estadoAtual.itens = itens;
     estadoAtual.versao = Math.max(estadoAtual.versao, versao || 0) + 1;
     estadoAtual.ultimaAtualizacao = new Date().toISOString();
-    if (busca  !== undefined) estadoAtual.busca  = busca;
+    if (busca !== undefined) estadoAtual.busca = busca;
     if (filtro !== undefined) estadoAtual.filtro = filtro;
 
     console.log(`[SYNC] Publicado — v${estadoAtual.versao} — ${itens.length} itens — busca:"${estadoAtual.busca}"`);
@@ -58,10 +64,10 @@ app.get('/sync/estado', async (req, res) => {
         await aguardarMudanca(versaoCliente, 3000);
     }
     res.json({
-        versao:            estadoAtual.versao,
-        itens:             estadoAtual.itens,
-        busca:             estadoAtual.busca,
-        filtro:            estadoAtual.filtro,
+        versao: estadoAtual.versao,
+        itens: estadoAtual.itens,
+        busca: estadoAtual.busca,
+        filtro: estadoAtual.filtro,
         ultimaAtualizacao: estadoAtual.ultimaAtualizacao
     });
 });
@@ -81,129 +87,109 @@ app.post('/sync/limpar', (req, res) => {
     console.log(`[SYNC] Limpo — v${estadoAtual.versao}`);
     res.json({ ok: true, versao: estadoAtual.versao });
 });
+
+// 5. Consulta Gemini via API REST (sem SDK — mais confiável)
 app.post('/sync/gemini', async (req, res) => {
     const { gtin } = req.body;
     if (!gtin) return res.status(400).json({ error: 'GTIN ausente' });
 
-    const chaveFixa = '';
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'SUA_CHAVE_AQUI') {
+        console.error('[IA] ❌ Chave da API não configurada!');
+        return res.status(500).json({ error: 'Chave da API Gemini não configurada no servidor.' });
+    }
+
+    const prompt = `Você é um catalogador especialista em autopeças. 
+Pesquise o código de barras / GTIN "${gtin}" e identifique o produto.
+Retorne APENAS um objeto JSON válido, sem nenhum texto antes ou depois, sem markdown, sem backticks.
+Formato obrigatório: {"nome": "NOME COMERCIAL DA PEÇA", "marca": "FABRICANTE", "desc": "APLICAÇÃO/VEÍCULO"}
+Se não encontrar, use: {"nome": "NÃO ENCONTRADO", "marca": "---", "desc": ""}`;
+
+    // URL da API REST do Gemini com Google Search ativado
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+
+    const body = {
+        contents: [
+            {
+                role: 'user',
+                parts: [{ text: prompt }]
+            }
+        ],
+        tools: [
+            {
+                google_search: {}  // Ativa a busca web nativa (sintaxe correta da API REST)
+            }
+        ],
+        generationConfig: {
+            temperature: 0.1,       // Respostas mais precisas/consistentes
+            maxOutputTokens: 256
+        }
+    };
+
+    console.log(`[IA] 🔍 Consultando Gemini para GTIN: ${gtin}`);
 
     try {
-        const ai = new GoogleGenAI({ apiKey: chaveFixa });
-
-        // Blindamos o prompt pedindo para ele ser muito rígido no formato
-        const prompt = `Você é um catálogo automotivo avançado. 
-Primeiro, USE A PESQUISA GOOGLE para encontrar exatamente qual peça de carro corresponde ao código de barras/GTIN "${gtin}".
-
-Em seguida, você deve retornar OBRIGATORIAMENTE apenas um objeto JSON com as chaves exatas: "nome", "marca" e "desc".
-Não coloque mensagens de introdução, conclusão ou formatações como \`\`\`json. Responda APENAS o JSON.
-
-Estrutura esperada:
-{
-  "nome": "NOME COMERCIAL DO PRODUTO EM CAIXA ALTA",
-  "marca": "MARCA DO PRODUTO EM CAIXA ALTA",
-  "desc": "Breve descrição técnica de uso"
-}`;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash', 
-            contents: prompt,
-            config: {
-                // Mantemos a pesquisa (isso resolve a busca das peças de carro)
-                tools: [{ googleSearch: {} }] 
-                
-                // ⚠️ A linha do responseMimeType foi REMOVIDA daqui para evitar o Erro 400
-            }
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            timeout: 30000 // 30 segundos
         });
 
-        const textoResposta = response.text;
+        const textoResposta = await response.text();
 
-        if (!textoResposta) {
-            return res.status(500).json({ error: "O Gemini não retornou uma resposta válida." });
+        // Mostra o erro real da API no terminal para facilitar debug
+        if (!response.ok) {
+            console.error(`[IA] ❌ Erro HTTP ${response.status}:`, textoResposta);
+            return res.status(500).json({
+                error: `Erro na API Gemini (HTTP ${response.status})`,
+                detalhe: textoResposta
+            });
         }
 
-        console.log("Resposta bruta da IA:", textoResposta);
+        const dados = JSON.parse(textoResposta);
 
-        // 🛡️ Limpeza cirúrgica contra blocos de código Markdown que a IA gera
-        let jsonLimpo = textoResposta.trim();
-        jsonLimpo = jsonLimpo.replace(/```json/g, '');
-        jsonLimpo = jsonLimpo.replace(/```/g, '');
-        jsonLimpo = jsonLimpo.trim();
+        // Extrai o texto da resposta da estrutura do Gemini
+        const partes = dados?.candidates?.[0]?.content?.parts;
+        const textoIA = partes?.find(p => p.text)?.text || '';
 
-        // Faz o parse manual do texto que sobrou
-        const produto = JSON.parse(jsonLimpo);
+        console.log('[IA] Resposta bruta:', textoIA);
 
-        const respostaFinal = {
-            nome: produto.nome || "PEÇA NÃO ENCONTRADA",
-            marca: produto.marca || "NÃO ENCONTRADO",
-            desc: produto.desc || "Sem descrição cadastrada para este GTIN."
-        };
+        if (!textoIA) {
+            console.warn('[IA] ⚠️  Nenhum texto retornado. Resposta completa:', JSON.stringify(dados, null, 2));
+            return res.json({ ok: true, produto: { nome: 'PEÇA NÃO LOCALIZADA', marca: '---', desc: '' } });
+        }
 
-        res.json({ ok: true, produto: respostaFinal });
+        // Extrai o JSON do texto (ignora qualquer texto ao redor)
+        const match = textoIA.match(/\{[\s\S]*?\}/);
+        if (match) {
+            const produto = JSON.parse(match[0]);
+            console.log('[IA] ✅ Produto encontrado:', produto);
+            return res.json({
+                ok: true,
+                produto: {
+                    nome: (produto.nome || 'NÃO ENCONTRADO').toUpperCase(),
+                    marca: (produto.marca || '---').toUpperCase(),
+                    desc: (produto.desc || '').toUpperCase()
+                }
+            });
+        }
 
-    } catch (e) {
-        console.error("Erro no processo da IA via SDK:", e);
-        res.status(500).json({ error: "Falha ao processar a requisição de autopeças. Tente novamente." });
+        // Se não tem JSON mas tem texto, loga para debug
+        console.warn('[IA] ⚠️  Texto retornado mas sem JSON válido:', textoIA);
+        return res.json({ ok: true, produto: { nome: 'PEÇA NÃO LOCALIZADA', marca: '---', desc: '' } });
+
+    } catch (erro) {
+        // Agora o erro REAL aparece no terminal
+        console.error('[IA] ❌ ERRO REAL:', erro.message || erro);
+        return res.status(500).json({
+            error: 'Erro interno ao consultar Gemini',
+            detalhe: erro.message
+        });
     }
 });
 
-
-app.post('/sync/gemini', async (req, res) => {
-    const { gtin } = req.body;
-    if (!gtin) return res.status(400).json({ error: 'GTIN ausente' });
-
-    const chaveFixa = '';
-
-    try {
-        // Inicializa o cliente do Gemini com a sua chave
-        const ai = new GoogleGenAI({ apiKey: chaveFixa });
-
-        const prompt = `Você é um robô catalogador de estoque. Identifique o produto real correspondente ao código de barras (GTIN/EAN) "${gtin}".
-Você DEVE retornar OBRIGATORIAMENTE apenas um objeto JSON e rigorosamente nada além disso. 
-
-Sua resposta deve ser estruturada exatamente assim:
-{
-  "nome": "NOME COMERCIAL DO PRODUTO EM CAIXA ALTA",
-  "marca": "MARCA DO PRODUTO EM CAIXA ALTA",
-  "desc": "Breve descrição de utilização"
-}
-
-Se você não encontrar o produto correspondente ao código "${gtin}", preencha o nome e a marca com "NÃO ENCONTRADO", mas mantenha o JSON válido.`;
-
-        // Executa a chamada usando o modelo recomendado
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                // Força o modelo a responder estritamente em formato JSON
-                responseMimeType: "application/json" 
-            }
-        });
-
-        const textoResposta = response.text;
-
-        if (!textoResposta) {
-            return res.status(500).json({ error: "O Gemini não retornou uma resposta válida." });
-        }
-
-        // Converte o texto JSON retornado pela IA diretamente em Objeto
-        const produto = JSON.parse(textoResposta.trim());
-
-        const respostaFinal = {
-            nome: produto.nome || "NÃO ENCONTRADO",
-            marca: produto.marca || "NÃO ENCONTRADO",
-            desc: produto.desc || "Sem descrição disponível."
-        };
-
-        res.json({ ok: true, produto: respostaFinal });
-
-    } catch (e) {
-        console.error("Erro no processo da IA via SDK:", e);
-        res.status(500).json({ error: "Falha ao processar a requisição usando o SDK do Gemini." });
-    }
-});
 
 app.listen(PORT, '0.0.0.0', () => {
-    // Descobre o IP local para mostrar no terminal
     const { networkInterfaces } = require('os');
     const nets = networkInterfaces();
     let ipLocal = 'SEU_IP';
@@ -212,8 +198,12 @@ app.listen(PORT, '0.0.0.0', () => {
             if (net.family === 'IPv4' && !net.internal) { ipLocal = net.address; break; }
         }
     }
+
+    const chaveOk = GEMINI_API_KEY && GEMINI_API_KEY !== 'SUA_CHAVE_AQUI';
+
     console.log(`\n✅ Servidor de Sync rodando!`);
     console.log(`💻 PC:      http://localhost:${PORT}`);
     console.log(`📱 Celular: http://${ipLocal}:${PORT}`);
+    console.log(`🔑 Gemini:  ${chaveOk ? '✅ Chave configurada' : '❌ CHAVE NÃO CONFIGURADA — edite GEMINI_API_KEY no topo do arquivo'}`);
     console.log(`\nPressione Ctrl+C para parar.\n`);
 });
