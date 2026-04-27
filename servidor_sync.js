@@ -3,13 +3,17 @@ const cors = require('cors');
 const path = require('path');
 const fetch = require('node-fetch');
 const fs = require('fs');
-
+const googleIt = require('google-it');
+const { getJson } = require("serpapi");
 const app = express();
 const PORT = 4000;
 
-// ── COLOQUE SUA CHAVE AQUI ─────────────────────────────────────
-// Gere uma nova em: https://aistudio.google.com/app/apikey
-const GEMINI_API_KEY = 'AIzaSyCHh2wG_M7GHMSmkJrKxGHdEB-Y9j9PhTk';
+// ── IA LOCAL (Ollama + Gemma3) — sem chave, sem limite ────────
+// Instale: https://ollama.com/download
+// Baixe o modelo: ollama pull gemma3:4b
+// Se seu PC for potente (16GB+ RAM): ollama pull gemma3:12b
+const OLLAMA_URL = 'http://localhost:11434/api/generate';
+const OLLAMA_MODEL = 'gemma3:4b';
 // ──────────────────────────────────────────────────────────────
 
 app.use(cors());
@@ -88,106 +92,95 @@ app.post('/sync/limpar', (req, res) => {
     res.json({ ok: true, versao: estadoAtual.versao });
 });
 
-// 5. Consulta Gemini via API REST (sem SDK — mais confiável)
+// 5. Consulta IA local via Ollama (Gemma3 — sem chave, sem limite)
 app.post('/sync/gemini', async (req, res) => {
     const { gtin } = req.body;
+    const SERP_API_KEY = "ac7e806331532e4af96ee3df4bfe224455efbae00c7eddc1a7305969178a4236"; // Sua chave da SerpApi
+
     if (!gtin) return res.status(400).json({ error: 'GTIN ausente' });
 
-    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'SUA_CHAVE_AQUI') {
-        console.error('[IA] ❌ Chave da API não configurada!');
-        return res.status(500).json({ error: 'Chave da API Gemini não configurada no servidor.' });
-    }
-
-    const prompt = `Você é um catalogador especialista em autopeças. 
-Pesquise o código de barras / GTIN "${gtin}" e identifique o produto.
-Retorne APENAS um objeto JSON válido, sem nenhum texto antes ou depois, sem markdown, sem backticks.
-Formato obrigatório: {"nome": "NOME COMERCIAL DA PEÇA", "marca": "FABRICANTE", "desc": "APLICAÇÃO/VEÍCULO"}
-Se não encontrar, use: {"nome": "NÃO ENCONTRADO", "marca": "---", "desc": ""}`;
-
-    // URL da API REST do Gemini com Google Search ativado
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
-
-    const body = {
-        contents: [
-            {
-                role: 'user',
-                parts: [{ text: prompt }]
-            }
-        ],
-        tools: [
-            {
-                google_search: {}  // Ativa a busca web nativa (sintaxe correta da API REST)
-            }
-        ],
-        generationConfig: {
-            temperature: 0.1,       // Respostas mais precisas/consistentes
-            maxOutputTokens: 256
-        }
-    };
-
-    console.log(`[IA] 🔍 Consultando Gemini para GTIN: ${gtin}`);
+    console.log(`[IA+WEB] 🔍 Buscando e catalogando GTIN: ${gtin}`);
 
     try {
-        const response = await fetch(url, {
+        // 1. BUSCA NO GOOGLE VIA SERPAPI
+        const searchResponse = await getJson({
+            engine: "google",
+            q: `produto autopeça aplicação EAN ${gtin}`, // Adicionado "aplicação" para vir os carros
+            api_key: SERP_API_KEY
+        });
+
+        const contextoWeb = (searchResponse.organic_results || [])
+            .slice(0, 4) // Pegamos 4 resultados para ter mais chance de achar os carros
+            .map(r => r.snippet)
+            .join(" | ");
+        let ladoDetectado = "";
+        const textoParaBusca = contextoWeb.toUpperCase();
+
+        if (textoParaBusca.includes("DIREITO") || textoParaBusca.includes(" LD")) ladoDetectado = "DIREITO";
+        if (textoParaBusca.includes("ESQUERDO") || textoParaBusca.includes(" LE")) ladoDetectado = "ESQUERDO";
+        if (textoParaBusca.includes(" TRASEIRO")) ladoDetectado += " TRASEIRO";
+        if (textoParaBusca.includes(" DIANTEIRO")) ladoDetectado += " DIANTEIRO";
+
+        const prompt = `Você é um catalogador técnico de autopeças.
+DADOS DA BUSCA: ${contextoWeb}
+GTIN: ${gtin}
+
+REGRAS OBRIGATÓRIAS:
+1. NOME: [PEÇA] + [CARRO] + [ANOS ENCONTRADOS].
+2. RIGOR COM ANOS: Extraia apenas os anos que aparecem de forma EXPLICITA nos dados acima. 
+   - Se o dado diz "01 a 06", escreva "2001-2006".
+   - Se o dado NÃO informa o ano final, NÃO use termos como "EM DIANTE" ou "ATUAL".
+   - Na dúvida entre várias fontes, use o intervalo que aparece com mais frequência ou o mais curto (mais conservador).
+3. PROIBIDO INVENTAR: Se os dados da web estiverem confusos ou incompletos sobre o ano, coloque apenas o NOME DA PEÇA e o CARRO.
+4. PEÇAS COM LADO: Verifique se a peça possui lado (DIREITO/ESQUERDO ou LD/LE).
+   - Se encontrar, adicione obrigatoriamente ao NOME (ex: AMORTECEDOR DIANTEIRO DIREITO CIVIC).
+   - Se os dados não informarem o lado, adicione "[VERIFICAR LADO]" ao nome para alertar o usuário.
+Exemplo de formato: "FILTRO DE AR CIVIC 2001-2006"
+
+Responda APENAS JSON:
+{
+  "nome": "NOME + CARRO + ANOS REAIS",
+  "marca": "MARCA",
+  "desc": "APLICAÇÃO RESUMIDA"
+}
+Se os dados da busca forem inconclusivos, retorne: {"nome": "NÃO ENCONTRADO", "marca": "---", "desc": ""}`;
+
+
+        const ollamaRes = await fetch(OLLAMA_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-            timeout: 30000 // 30 segundos
+            body: JSON.stringify({
+                model: OLLAMA_MODEL,
+                prompt: prompt,
+                stream: false,
+                format: 'json',
+                options: { temperature: 0.1 }
+            })
         });
 
-        const textoResposta = await response.text();
+        const dados = await ollamaRes.json();
+        const produto = JSON.parse(dados.response || "{}");
 
-        // Mostra o erro real da API no terminal para facilitar debug
-        if (!response.ok) {
-            console.error(`[IA] ❌ Erro HTTP ${response.status}:`, textoResposta);
-            return res.status(500).json({
-                error: `Erro na API Gemini (HTTP ${response.status})`,
-                detalhe: textoResposta
-            });
-        }
+        // --- LOG NO TERMINAL ---
+        console.log(`\n--- [IA] RESULTADO DA CONSULTA ---`);
+        console.log(`GTIN: ${gtin}`);
+        console.log(`NOME: ${produto.nome}`);
+        console.log(`MARCA: ${produto.marca}`);
+        console.log(`DESC/ANOS: ${produto.desc}`); // <--- Isso vai mostrar no seu terminal
+        console.log(`----------------------------------\n`);
 
-        const dados = JSON.parse(textoResposta);
-
-        // Extrai o texto da resposta da estrutura do Gemini
-        const partes = dados?.candidates?.[0]?.content?.parts;
-        const textoIA = partes?.find(p => p.text)?.text || '';
-
-        console.log('[IA] Resposta bruta:', textoIA);
-
-        if (!textoIA) {
-            console.warn('[IA] ⚠️  Nenhum texto retornado. Resposta completa:', JSON.stringify(dados, null, 2));
-            return res.json({ ok: true, produto: { nome: 'PEÇA NÃO LOCALIZADA', marca: '---', desc: '' } });
-        }
-
-        // Extrai o JSON do texto (ignora qualquer texto ao redor)
-        const match = textoIA.match(/\{[\s\S]*?\}/);
-        if (match) {
-            const produto = JSON.parse(match[0]);
-            console.log('[IA] ✅ Produto encontrado:', produto);
-            return res.json({
-                ok: true,
-                produto: {
-                    nome: (produto.nome || 'NÃO ENCONTRADO').toUpperCase(),
-                    marca: (produto.marca || '---').toUpperCase(),
-                    desc: (produto.desc || '').toUpperCase()
-                }
-            });
-        }
-
-        // Se não tem JSON mas tem texto, loga para debug
-        console.warn('[IA] ⚠️  Texto retornado mas sem JSON válido:', textoIA);
-        return res.json({ ok: true, produto: { nome: 'PEÇA NÃO LOCALIZADA', marca: '---', desc: '' } });
-
+        res.json({
+            ok: true,
+            produto: {
+                nome: (produto.nome || 'NÃO ENCONTRADO').toUpperCase(),
+                marca: (produto.marca || '---').toUpperCase(),
+                desc: (produto.desc || '').toUpperCase() // <--- Envia para o seu app
+            }
+        });
     } catch (erro) {
-        // Agora o erro REAL aparece no terminal
-        console.error('[IA] ❌ ERRO REAL:', erro.message || erro);
-        return res.status(500).json({
-            error: 'Erro interno ao consultar Gemini',
-            detalhe: erro.message
-        });
+        console.error('[IA] ❌ ERRO:', erro.message);
+        res.status(500).json({ error: 'Erro na consulta', detalhe: erro.message });
     }
 });
-
 
 app.listen(PORT, '0.0.0.0', () => {
     const { networkInterfaces } = require('os');
@@ -199,11 +192,11 @@ app.listen(PORT, '0.0.0.0', () => {
         }
     }
 
-    const chaveOk = GEMINI_API_KEY && GEMINI_API_KEY !== 'SUA_CHAVE_AQUI';
-
-    console.log(`\n✅ Servidor de Sync rodando!`);
+    console.log(`\n✅ Servidor rodando!`);
     console.log(`💻 PC:      http://localhost:${PORT}`);
     console.log(`📱 Celular: http://${ipLocal}:${PORT}`);
-    console.log(`🔑 Gemini:  ${chaveOk ? '✅ Chave configurada' : '❌ CHAVE NÃO CONFIGURADA — edite GEMINI_API_KEY no topo do arquivo'}`);
+    console.log(`🤖 IA:      Ollama local (${OLLAMA_MODEL}) — sem chave, sem limite`);
+    console.log(`\n⚠️  Certifique-se que o Ollama está rodando: ollama serve`);
+    console.log(`⚠️  E que o modelo foi baixado:             ollama pull ${OLLAMA_MODEL}`);
     console.log(`\nPressione Ctrl+C para parar.\n`);
 });
