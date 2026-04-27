@@ -8,12 +8,18 @@ const { getJson } = require("serpapi");
 const app = express();
 const PORT = 4000;
 
+<<<<<<< HEAD
 // ── IA LOCAL (Ollama + Gemma3) — sem chave, sem limite ────────
 // Instale: https://ollama.com/download
 // Baixe o modelo: ollama pull gemma3:4b
 // Se seu PC for potente (16GB+ RAM): ollama pull gemma3:12b
 const OLLAMA_URL = 'http://localhost:11434/api/generate';
 const OLLAMA_MODEL = 'gemma3:4b';
+=======
+// ── COLOQUE SUA CHAVE AQUI ─────────────────────────────────────
+// Gere uma nova em: https://aistudio.google.com/app/apikey
+const GEMINI_API_KEY = '';
+>>>>>>> 55e1911777462744d0288d3fa75ea6efaae374e1
 // ──────────────────────────────────────────────────────────────
 
 app.use(cors());
@@ -99,7 +105,43 @@ app.post('/sync/gemini', async (req, res) => {
 
     if (!gtin) return res.status(400).json({ error: 'GTIN ausente' });
 
+<<<<<<< HEAD
     console.log(`[IA+WEB] 🔍 Buscando e catalogando GTIN: ${gtin}`);
+=======
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'SUA_CHAVE_AQUI') {
+        console.error('[IA] ❌ Chave da API não configurada!');
+        return res.status(500).json({ error: 'Chave da API Gemini não configurada no servidor.' });
+    }
+
+    const prompt = `Você é um catalogador especialista em autopeças. 
+Pesquise o código de barras / GTIN "${gtin}" e identifique o produto.
+Retorne APENAS um objeto JSON válido, sem nenhum texto antes ou depois, sem markdown, sem backticks.
+Formato obrigatório: {"nome": "NOME COMERCIAL DA PEÇA", "marca": "FABRICANTE", "desc": "APLICAÇÃO/VEÍCULO"}
+Se não encontrar, use: {"nome": "NÃO ENCONTRADO", "marca": "---", "desc": ""}`;
+
+    // URL da API REST do Gemini com Google Search ativado
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+
+    const body = {
+        contents: [
+            {
+                role: 'user',
+                parts: [{ text: prompt }]
+            }
+        ],
+        tools: [
+            {
+                google_search: {}  // Ativa a busca web nativa (sintaxe correta da API REST)
+            }
+        ],
+        generationConfig: {
+            temperature: 0.1,       // Respostas mais precisas/consistentes
+            maxOutputTokens: 256
+        }
+    };
+
+    console.log(`[IA] 🔍 Consultando Gemini para GTIN: ${gtin}`);
+>>>>>>> 55e1911777462744d0288d3fa75ea6efaae374e1
 
     try {
         // 1. BUSCA NO GOOGLE VIA SERPAPI
