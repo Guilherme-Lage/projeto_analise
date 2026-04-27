@@ -9,7 +9,7 @@ const PORT = 4000;
 
 // ── COLOQUE SUA CHAVE AQUI ─────────────────────────────────────
 // Gere uma nova em: https://aistudio.google.com/app/apikey
-const GEMINI_API_KEY = 'AIzaSyCHh2wG_M7GHMSmkJrKxGHdEB-Y9j9PhTk';
+const GEMINI_API_KEY = '';
 // ──────────────────────────────────────────────────────────────
 
 app.use(cors());
@@ -105,7 +105,7 @@ Formato obrigatório: {"nome": "NOME COMERCIAL DA PEÇA", "marca": "FABRICANTE",
 Se não encontrar, use: {"nome": "NÃO ENCONTRADO", "marca": "---", "desc": ""}`;
 
     // URL da API REST do Gemini com Google Search ativado
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
 
     const body = {
         contents: [
