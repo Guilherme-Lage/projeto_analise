@@ -1271,3 +1271,45 @@ tbody tr.conferido {
     cursor: not-allowed;
     background: #888;
 }
+/* ── Botão Verificar com IA (dentro do modal) ── */
+.btn-verificar-ia {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 9px 14px;
+    background: linear-gradient(135deg, #00009C, #4444cc);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: 8px;
+    transition: opacity 0.2s;
+}
+.btn-verificar-ia:hover  { opacity: 0.85; }
+.btn-verificar-ia:active { opacity: 0.7; }
+
+/* ── Textarea de nome no modal (auto-resize) ── */
+.modal-nome-textarea {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1a1a1a;
+    border: none;
+    outline: none;
+    background: transparent;
+    width: 100%;
+    padding: 0;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+    resize: none;
+    overflow: hidden;
+}
+.modal-nome-textarea:focus { border-bottom: 1.5px solid #00009C; }

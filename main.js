@@ -417,24 +417,28 @@ function processarCSV(texto, nomeArquivo) {
 
         const sep = linhas[0].includes('|') ? '|' : (linhas[0].includes(';') ? ';' : ',');
         const cabecalho = parseLinhaCsv(linhas[0], sep).map(v => v.toUpperCase().trim());
+        
+        // Função auxiliar para encontrar colunas mesmo que o nome mude um pouco
         const idx = (nome) => cabecalho.findIndex(c => c.includes(nome.toUpperCase()));
 
-        const ehExportado = idx('STATUS') >= 0 && idx('LOCACAO') >= 0 && idx('CODIGO') >= 0;
+        const ehExportado = idx('STATUS') >= 0 && idx('LOCACAO') >= 0 && (idx('CODIGO') >= 0 || idx('ITEM_ESTOQUE_PUB') >= 0);
         itens = [];
 
         // Captura o índice da coluna UTILIZACAO globalmente
-        const iUtilizacao = cabecalho.findIndex(c => c.includes('UTILIZACAO_ITEM') || c === 'UTILIZACAO');
-        console.log("Índice da Utilização detectado:", iUtilizacao);
+        const iUtilizacao = idx('UTILIZACAO');
+        let iGtin = idx('COD_EAN_GTIN');
+        if (iGtin < 0) iGtin = idx('GTIN');
+
         if (ehExportado) {
-            // ── CSV EXPORTADO ───────────────────────────────────────────
+            // ── 1. CASO: CSV QUE JÁ FOI EXPORTADO PELO SEU SISTEMA ────────────────
             const iStatus = idx('STATUS');
             const iMarca = idx('MARCA');
-            const iCodigo = idx('CODIGO');
-            const iNome = idx('NOME');
-            const iQtd = idx('QTD_SISTEMA');
+            const iCodigo = idx('CODIGO') >= 0 ? idx('CODIGO') : idx('ITEM_ESTOQUE_PUB');
+            const iNome = idx('NOME') >= 0 ? idx('NOME') : idx('DES_ITEM_ESTOQUE');
+            const iQtd = idx('QTD_SISTEMA') >= 0 ? idx('QTD_SISTEMA') : idx('QTD');
             const iQtdConf = idx('QTD_CONFERIDA');
             const iLocacao = idx('LOCACAO');
-            const iGtinAntig = idx('GTIN_ANTIGO');
+            const iGtinAntig = idx('GTIN_ANTIGO') >= 0 ? idx('GTIN_ANTIGO') : iGtin;
             const iGtinNovo = idx('GTIN_NOVO');
             const iData = idx('DATA_HORA');
 
@@ -447,65 +451,62 @@ function processarCSV(texto, nomeArquivo) {
                 const cols = parseLinhaCsv(linhas[i], sep);
                 if (cols.length < 2) continue;
 
-                const fotos = fotoCols.map(fi => cols[fi] || '').filter(f => f.trim() !== '');
-                const qtdRaw = iQtd >= 0 ? cols[iQtd] : '0';
-                const qtdConfRaw = iQtdConf >= 0 ? cols[iQtdConf] : '';
-
-                // --- NOVA CAPTURA DO STATUS ---
                 const statusLido = (iStatus >= 0 ? cols[iStatus] : '').toUpperCase();
+                const fotos = fotoCols.map(fi => cols[fi] || '').filter(f => f.trim() !== '');
 
                 itens.push({
-                    locacao: (iLocacao >= 0 ? cols[iLocacao] : '').toUpperCase(),
-                    codigo: (iCodigo >= 0 ? cols[iCodigo] : '').toUpperCase(),
-                    nome: (iNome >= 0 ? cols[iNome] : '').toUpperCase(),
+                    locacao: (iLocacao >= 0 ? cols[iLocacao] : 'S/L').toUpperCase(),
+                    codigo: (iCodigo >= 0 ? cols[iCodigo] : 'S/C').toUpperCase(),
+                    nome: (iNome >= 0 ? cols[iNome] : '---').toUpperCase(),
+                    marca: (iMarca >= 0 ? cols[iMarca] : '').toUpperCase(),
                     utilizacao: iUtilizacao >= 0 ? cols[iUtilizacao] : '',
-                    qtd: parseFloat(qtdRaw.replace(',', '.')) || 0,
-                    gtinAntigo: (iGtinAntig >= 0 ? cols[iGtinAntig] : '').toUpperCase(),
+                    qtd: parseFloat((cols[iQtd] || '0').toString().replace(',', '.')) || 0,
+                    gtinAntigo: (iGtinAntig >= 0 ? cols[iGtinAntig] : '---').toUpperCase(),
                     gtinNovo: (iGtinNovo >= 0 ? cols[iGtinNovo] : '').toUpperCase(),
                     dataHoraRegistro: iData >= 0 ? cols[iData] : null,
-                    marca: (iMarca >= 0 ? cols[iMarca] : '').toUpperCase(),
-
-                    // ── CORREÇÃO AQUI ──────────────────────────────────────
-                    conferido: statusLido === 'OK' || statusLido === 'ALTERNATIVO',
-                    ehAlternativo: statusLido === 'ALTERNATIVO', // Agora ele sabe que veio da exportação
-                    // ───────────────────────────────────────────────────────
-
-                    qtdConferida: qtdConfRaw !== '' ? parseFloat(qtdConfRaw) : null,
+                    conferido: statusLido === 'OK' || statusLido === 'ALTERNATIVO' || statusLido === 'CONFERIDO',
+                    ehAlternativo: statusLido === 'ALTERNATIVO',
+                    qtdConferida: (iQtdConf >= 0 && cols[iQtdConf] !== '') ? parseFloat(cols[iQtdConf]) : null,
                     fotos: fotos
                 });
             }
 
         } else {
-            // ── CSV ORIGINAL DO SISTEMA ─────────────────────────────────
-            const iCodigo = idx('ITEM_ESTOQUE_PUB');
-            const iNome = idx('DES_ITEM_ESTOQUE');
-            const iQtd = idx('QTD_CONTABIL');
+            // ── 2. CASO: CSV ORIGINAL QUE VEM DO SEU ERP (SISTEMA) ────────────────
+            // Tentativa de mapear ITEM_ESTOQUE_PUB ou similar para evitar undefined
+            let iCodigo = idx('ITEM_ESTOQUE_PUB');
+            if (iCodigo < 0) iCodigo = idx('CODIGO');
+            if (iCodigo < 0) iCodigo = 0; // Se não achar nada, assume a primeira coluna
+
+            let iNome = idx('DES_ITEM_ESTOQUE');
+            if (iNome < 0) iNome = idx('NOME');
+
+            let iQtd = idx('QTD_CONTABIL');
+            if (iQtd < 0) iQtd = idx('SALDO');
+            if (iQtd < 0) iQtd = idx('QTD');
+
+            const iMarcaCSV = idx('MARCA');
             const iZona = idx('LOCACAO_ZONA');
             const iRua = idx('LOCACAO_RUA');
             const iEstante = idx('LOCACAO_ESTANTE');
             const iPrateleira = idx('LOCACAO_PRATELEIRA');
             const iNumero = idx('LOCACAO_NUMERO');
-            const iMarcaCSV = idx('MARCA');
-            let iGtin = idx('COD_EAN_GTIN');
-            if (iGtin < 0) iGtin = idx('GTIN');
 
             for (let i = 1; i < linhas.length; i++) {
                 const cols = parseLinhaCsv(linhas[i], sep);
                 if (cols.length < 2) continue;
 
+                // Monta a locação combinando as colunas de endereço
                 const locacao = [iZona, iRua, iEstante, iPrateleira, iNumero]
                     .map(x => (x >= 0 && cols[x]) ? cols[x].trim() : '')
                     .filter(Boolean).join('.');
 
-                const codigo = iCodigo >= 0 ? cols[iCodigo] : `item-${i}`;
-                if (!codigo) continue;
-
                 itens.push({
-                    locacao: locacao.toUpperCase(),
-                    codigo: codigo.toUpperCase(),
-                    nome: (iNome >= 0 ? cols[iNome] : '---').toUpperCase(),
-                    utilizacao: iUtilizacao >= 0 ? cols[iUtilizacao] : '', // CAPTURA NO ORIGINAL
-                    qtd: parseFloat((iQtd >= 0 ? cols[iQtd] : '0').replace(',', '.')) || 0,
+                    locacao: locacao.toUpperCase() || 'S/L',
+                    codigo: (cols[iCodigo] || `ERR-${i}`).trim().toUpperCase(),
+                    nome: (iNome >= 0 ? cols[iNome] : 'PRODUTO SEM NOME').toUpperCase(),
+                    utilizacao: iUtilizacao >= 0 ? cols[iUtilizacao] : '',
+                    qtd: parseFloat((iQtd >= 0 ? cols[iQtd] : '0').toString().replace(',', '.')) || 0,
                     gtinAntigo: (iGtin >= 0 ? cols[iGtin] : '---').toUpperCase(),
                     gtinNovo: '',
                     marca: (iMarcaCSV >= 0 ? cols[iMarcaCSV] : '').toUpperCase(),
@@ -516,11 +517,13 @@ function processarCSV(texto, nomeArquivo) {
             }
         }
 
+        // Ordena por locação (alfanumérico)
         itens.sort((a, b) => a.locacao.localeCompare(b.locacao, undefined, { numeric: true }));
 
         renderizarTabela(itens);
         atualizarContador();
 
+        // Atualiza a barra de informações sobre o arquivo
         let elInfo = document.getElementById('info-arquivo');
         if (!elInfo) {
             elInfo = document.createElement('div');
@@ -529,15 +532,21 @@ function processarCSV(texto, nomeArquivo) {
             document.querySelector('.tabela-wrapper').before(elInfo);
         }
         elInfo.style.display = 'block';
-        elInfo.textContent = `${nomeArquivo} — ${itens.length} itens${ehExportado ? ' (exportado)' : ''}`;
+        elInfo.textContent = `${nomeArquivo} — ${itens.length} itens ${ehExportado ? '(Exportado)' : '(Original)'}`;
+        
         document.getElementById('btn-limpar').style.display = 'inline-block';
+        
+        // Salva e Sincroniza
+        salvarBackup();
         syncPublicar();
 
     } catch (erro) {
-        console.error("Erro ao processar CSV:", erro);
-        alert("Erro ao ler o arquivo: " + erro.message);
+        console.error("Erro crítico ao processar o CSV:", erro);
+        alert("Erro ao ler o arquivo. Verifique o console do navegador.");
     }
 }
+
+
 
 function renderizarTabela(lista) {
     const corpo = document.getElementById('corpo');
@@ -722,7 +731,6 @@ function filtrar() {
     }
     renderizarTabela(resultados);
 }
-
 function exportarCSV() {
     try {
         if (itens.length === 0) {
@@ -731,12 +739,11 @@ function exportarCSV() {
         }
 
         const maxFotos = 5;
-
-        // 1. Cabeçalho CSV
+        // 1. Cabeçalho alinhado com sua mudança
         let colunas = [
-            'STATUS', 'MARCA', 'CODIGO', 'NOME', 'UTILIZACAO_ITEM',
-            'QTD_SISTEMA', 'QTD_CONFERIDA', 'LOCACAO', 'LOCACAO_NOVA',
-            'GTIN_ANTIGO', 'GTIN_NOVO', 'DATA_HORA'
+            'STATUS', 'ITEM_ESTOQUE', 'ITEM_ESTOQUE_PUB', 'DES_ITEM_ESTOQUE', 
+            'MARCA', 'UTILIZACAO_ITEM', 'QTD_SISTEMA', 'QTD_CONFERIDA', 
+            'LOCACAO', 'LOCACAO_NOVA', 'GTIN_ANTIGO', 'GTIN_NOVO', 'DATA_HORA'
         ];
 
         for (let i = 1; i <= maxFotos; i++) {
@@ -748,7 +755,6 @@ function exportarCSV() {
         // 2. Processamento dos itens
         itens.forEach(item => {
             const qtdC = item.qtdConferida != null ? item.qtdConferida : '';
-
             let statusExport = 'PENDENTE';
             if (item.ehAlternativo) {
                 statusExport = 'ALTERNATIVO';
@@ -756,12 +762,14 @@ function exportarCSV() {
                 statusExport = 'OK';
             }
 
+            // CORREÇÃO AQUI: Mapeando as chaves corretas que vêm do processarCSV
             let registro = [
                 statusExport,
+                item.itemEstoque || '',       // Pegando itemEstoque em vez de vazio
+                item.codigo || '',         // Pegando codigoPub em vez de codigo
+                `"${item.nome || ''}"`,       // DES_ITEM_ESTOQUE
                 item.marca || '',
-                item.codigo,
-                `"${item.nome}"`,
-                `"${item.utilizacao || ''}"`, // Garante que o valor capturado seja escrito
+                `"${item.utilizacao || ''}"`,
                 item.qtd,
                 qtdC,
                 item.locacaoOriginal || item.locacao,
@@ -787,7 +795,6 @@ function exportarCSV() {
         const csvContent = "\uFEFF" + linhas.join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
-
         const link = document.createElement("a");
         link.href = url;
         link.download = `estoque_conferido.csv`;
@@ -1722,4 +1729,121 @@ async function buscarProdutoComGemini() {
         btnRodar.disabled = false;
         btnRodar.style.opacity = '1';
     }
+}
+// ═══════════════════════════════════════════════════════════════
+//  VERIFICAR COM IA — modal do item → Ollama + SerpAPI no servidor
+// ═══════════════════════════════════════════════════════════════
+
+function fecharModalIAConf() {
+    document.getElementById('modal-ia-conf-overlay').classList.remove('aberto');
+}
+function fecharModalIAConfFora(e) {
+    if (e.target === document.getElementById('modal-ia-conf-overlay')) fecharModalIAConf();
+}
+
+async function verificarComIA() {
+    if (idxModalAtual < 0) return;
+    const item = itens[idxModalAtual];
+
+    const gtinEl = document.getElementById('modal-gtin-novo');
+    const gtin   = (gtinEl?.value || item.gtinNovo || item.gtinAntigo || '').trim();
+
+    if (!gtin) {
+        alert('Preencha o campo GTIN Novo antes de verificar com a IA.');
+        gtinEl?.focus();
+        return;
+    }
+
+    const overlay  = document.getElementById('modal-ia-conf-overlay');
+    const status   = document.getElementById('ia-conf-status');
+    const corpo    = document.getElementById('ia-conf-corpo');
+    const acoes    = document.getElementById('ia-conf-acoes');
+    const sFechar  = document.getElementById('ia-conf-apenas-fechar');
+
+    overlay.classList.add('aberto');
+    status.style.display  = 'block';
+    status.style.color    = '#888';
+    status.textContent    = '🔍 Consultando IA com o GTIN ' + gtin + '...';
+    corpo.style.display   = 'none';
+    acoes.style.display   = 'none';
+    sFechar.style.display = 'flex';
+
+    try {
+        const res = await fetch('/sync/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gtin })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || data.detalhe || `Erro HTTP ${res.status}`);
+
+        const prod = data.produto;
+
+        // Preenche comparativo
+        document.getElementById('ia-atual-nome').textContent  = item.nome  || '---';
+        document.getElementById('ia-atual-marca').textContent = item.marca || '---';
+
+        const elNomeIA = document.getElementById('ia-novo-nome');
+        elNomeIA.value = prod.nome || '';
+        setTimeout(() => autoResizeNome(elNomeIA), 10);
+
+        document.getElementById('ia-novo-marca').value = prod.marca || '';
+        document.getElementById('ia-novo-desc').textContent  = prod.desc  || '(sem descrição)';
+
+        // Marca checkbox só onde há diferença
+        document.getElementById('ia-chk-nome').checked  = (prod.nome  || '').toUpperCase() !== (item.nome  || '').toUpperCase();
+        document.getElementById('ia-chk-marca').checked = (prod.marca || '').toUpperCase() !== (item.marca || '').toUpperCase();
+
+        status.style.display  = 'none';
+        corpo.style.display   = 'block';
+        acoes.style.display   = 'grid';
+        sFechar.style.display = 'none';
+
+    } catch (erro) {
+        console.error('[IA]', erro);
+        status.style.color   = '#CC0000';
+        status.textContent   = '❌ ' + erro.message + '\n\nVerifique se o servidor está rodando e o Ollama está ativo (ollama serve).';
+    }
+}
+
+function aplicarResultadoIA() {
+    if (idxModalAtual < 0) { fecharModalIAConf(); return; }
+    const item = itens[idxModalAtual];
+
+    if (document.getElementById('ia-chk-nome').checked) {
+        const v = document.getElementById('ia-novo-nome').value.trim().toUpperCase();
+        if (v) {
+            item.nome = v;
+            const el = document.getElementById('modal-nome');
+            if (el) {
+                el.value = v;
+                autoResizeNome(el);
+                el.style.background = '#f0fff4';
+                setTimeout(() => el.style.background = '', 2000);
+            }
+        }
+    }
+
+    if (document.getElementById('ia-chk-marca').checked) {
+        const v = document.getElementById('ia-novo-marca').value.trim().toUpperCase();
+        if (v) {
+            item.marca = v;
+            const el = document.getElementById('modal-marca');
+            if (el) {
+                el.value = v;
+                el.style.background = '#f0fff4';
+                setTimeout(() => el.style.background = '', 2000);
+            }
+        }
+    }
+
+    fecharModalIAConf();
+}
+
+// Auto-resize textarea de nome
+function autoResizeNome(el) {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
 }

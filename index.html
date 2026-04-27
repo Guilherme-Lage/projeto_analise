@@ -192,6 +192,7 @@
                     <div class="modal-cell fotos-cell">
                         <span class="modal-cell-label">Fotos</span>
                         <div class="galeria-fotos" id="galeria-fotos"></div>
+                        <button class="btn-verificar-ia" onclick="verificarComIA()">     Verificar com IA</button>
                         <button class="btn-adicionar-foto" onclick="document.getElementById('foto-input').click()">+
                             Adicionar Foto</button>
                         <input type="file" id="foto-input" accept="image/*" multiple onchange="carregarFotos(this)"
@@ -388,6 +389,72 @@
             <div style="padding: 15px; display: flex; justify-content: space-between; background: #f9f9f9; border-top: 1px solid #eee;">
                 <button class="modal-btn-cancelar" style="width: 100px; height: 36px; font-size: 11px; border-radius: 4px; border: 1.5px solid #1a1a1a;" onclick="fecharModalIA()">FECHAR</button>
                 <button class="modal-btn-confirmar" id="btn-rodar-ia" style="width: 140px; height: 36px; font-size: 11px; border-radius: 4px; background: #00009C;" onclick="buscarProdutoComGemini()">CONSULTAR</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL CONFIRMAÇÃO IA (Verificar com IA no modal do item) -->
+    <div class="modal-overlay" id="modal-ia-conf-overlay" onclick="fecharModalIAConfFora(event)">
+        <div class="modal" style="max-width:460px;">
+            <div class="modal-header" style="background:#00009C;">
+                <span class="modal-header-titulo"> Resultado da IA — Confirme as alterações</span>
+                <button class="modal-fechar" onclick="fecharModalIAConf()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div style="padding:10px 14px; background:#fff9c4; border-bottom:1.5px solid #e8e8e8; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#7a6500;">
+                    ⚠️ A IA pode errar. Verifique os dados antes de confirmar.
+                </div>
+                <div id="ia-conf-status" style="padding:16px 14px; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:12px; color:#888; display:none;"></div>
+                <div id="ia-conf-corpo" style="display:none;">
+                    <!-- Nome -->
+                    <div style="display:grid; grid-template-columns:28px 1fr 1fr; border-bottom:1.5px solid #e8e8e8; align-items:center;">
+                        <div style="padding:10px 6px; text-align:center;">
+                            <input type="checkbox" id="ia-chk-nome" style="width:16px;height:16px;cursor:pointer;" checked>
+                        </div>
+                        <div class="modal-cell" style="border-right:1.5px solid #e8e8e8;">
+                            <span class="modal-cell-label">Nome Atual</span>
+                            <span id="ia-atual-nome" style="font-size:11px; font-family:'IBM Plex Mono',monospace; color:#888; word-break:break-word; white-space:normal; line-height:1.3;"></span>
+                        </div>
+                        <div class="modal-cell">
+                            <span class="modal-cell-label" style="color:#00009C;">Nome IA</span>
+                            <textarea id="ia-novo-nome" oninput="autoResizeNome(this)"
+                                style="font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600; color:#00009C;
+                                       border:none; outline:none; background:transparent; width:100%; resize:none;
+                                       overflow:hidden; min-height:22px; line-height:1.4;" rows="1"></textarea>
+                        </div>
+                    </div>
+                    <!-- Marca -->
+                    <div style="display:grid; grid-template-columns:28px 1fr 1fr; border-bottom:1.5px solid #e8e8e8; align-items:center;">
+                        <div style="padding:10px 6px; text-align:center;">
+                            <input type="checkbox" id="ia-chk-marca" style="width:16px;height:16px;cursor:pointer;" checked>
+                        </div>
+                        <div class="modal-cell" style="border-right:1.5px solid #e8e8e8;">
+                            <span class="modal-cell-label">Marca Atual</span>
+                            <span id="ia-atual-marca" style="font-size:11px; font-family:'IBM Plex Mono',monospace; color:#888;"></span>
+                        </div>
+                        <div class="modal-cell">
+                            <span class="modal-cell-label" style="color:#00009C;">Marca IA</span>
+                            <input id="ia-novo-marca" type="text"
+                                style="font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600; color:#00009C;
+                                       border:none; outline:none; background:transparent; width:100%;">
+                        </div>
+                    </div>
+                    <!-- Desc -->
+                    <div style="border-bottom:1.5px solid #e8e8e8;">
+                        <div class="modal-cell">
+                            <span class="modal-cell-label">Descrição / Aplicação (IA)</span>
+                            <span id="ia-novo-desc" style="font-size:11px; font-family:'IBM Plex Mono',monospace; color:#555; line-height:1.4; white-space:normal; word-break:break-word;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions" id="ia-conf-acoes" style="display:none;">
+                <button class="modal-btn modal-btn-cancelar" onclick="fecharModalIAConf()">Cancelar</button>
+                <button class="modal-btn modal-btn-confirmar" onclick="aplicarResultadoIA()">✓ Aplicar Selecionados</button>
+            </div>
+            <div id="ia-conf-apenas-fechar" style="display:flex; border-top:2px solid #1a1a1a;">
+                <button class="modal-btn modal-btn-cancelar" style="width:100%;" onclick="fecharModalIAConf()">Fechar</button>
             </div>
         </div>
     </div>
