@@ -11,7 +11,7 @@ const PORT = 4000;
 // Instale: https://ollama.com/download
 // Baixe o modelo: ollama pull gemma3:4b
 // Se seu PC for potente (16GB+ RAM): ollama pull gemma3:12b
-const OLLAMA_URL = 'http://localhost:11434/api/generate';
+const OLLAMA_URL = 'http://localhost:8080/api/generate';
 const OLLAMA_MODEL = 'gemma3:4b';
 // ──────────────────────────────────────────────────────────────
 
@@ -94,7 +94,7 @@ app.post('/sync/limpar', (req, res) => {
 // 5. Consulta IA local via Ollama (Gemma3 — sem chave, sem limite)
 app.post('/sync/gemini', async (req, res) => {
     const { gtin } = req.body;
-    const SERP_API_KEY = "c479d73e580ac68952733022cb27969fa200a5c77c8f8a36308971c3453e6e67"; // Sua chave da SerpApi
+    const SERP_API_KEY = "bdd728298be40f412f0a45ed10ebdeda59319e180c67da520e337c785156bcc3"; // Sua chave da SerpApi
 
     if (!gtin) return res.status(400).json({ error: 'GTIN ausente' });
 
@@ -120,30 +120,25 @@ app.post('/sync/gemini', async (req, res) => {
         if (textoParaBusca.includes(" TRASEIRO")) ladoDetectado += " TRASEIRO";
         if (textoParaBusca.includes(" DIANTEIRO")) ladoDetectado += " DIANTEIRO";
 
-        const prompt = `Você é um catalogador técnico de autopeças.
-DADOS DA BUSCA: ${contextoWeb}
-GTIN: ${gtin}
+ const prompt = `Você é um catalogador técnico de autopeças. 
+DADOS DA BUSCA WEB (FONTE ÚNICA): ${contextoWeb}
+GTIN ALVO: ${gtin}
 
-REGRAS OBRIGATÓRIAS:
-1. NOME: [PEÇA] + [CARRO] + [ANOS ENCONTRADOS].
-2. RIGOR COM ANOS: Extraia apenas os anos que aparecem de forma EXPLICITA nos dados acima. 
-   - Se o dado diz "01 a 06", escreva "2001-2006".
-   - Se o dado NÃO informa o ano final, NÃO use termos como "EM DIANTE" ou "ATUAL".
-   - Na dúvida entre várias fontes, use o intervalo que aparece com mais frequência ou o mais curto (mais conservador).
-3. PROIBIDO INVENTAR: Se os dados da web estiverem confusos ou incompletos sobre o ano, coloque apenas o NOME DA PEÇA e o CARRO.
-4. PEÇAS COM LADO: Verifique se a peça possui lado (DIREITO/ESQUERDO ou LD/LE).
-   - Se encontrar, adicione obrigatoriamente ao NOME (ex: AMORTECEDOR DIANTEIRO DIREITO CIVIC).
-  - Se os dados não informarem o lado, adicione "[VERIFICAR LADO]" ao nome para alertar o usuário.
+REGRAS CRÍTICAS:
+1. FOCO TOTAL: Baseie-se APENAS nos "DADOS DA BUSCA" acima. Não use exemplos de conversas anteriores ou conhecimentos genéricos.
+2. NOME DO PRODUTO: Use o formato [PEÇA] + [VEÍCULO] + [ANOS]. 
+3. RIGOR COM ANOS: Extraia apenas anos explícitos (ex: 2010-2015). Se não houver ano, não invente.
+4. LADO: Se os dados indicarem posição (DIREITO/ESQUERDO/DIANTEIRO/TRASEIRO), inclua no nome. Caso contrário, não adicione termos de posição.
+5. ZERO ALUCINAÇÃO: Se os dados da busca mencionarem uma peça e você retornar outra (ex: dados falam de "Filtro" e você responde "Amortecedor"), o resultado será descartado.
 
-Exemplo de formato: "FILTRO DE AR CIVIC 2001-2006"
-
-Responda APENAS JSON:
+Responda APENAS JSON no formato:
 {
-  "nome": "NOME + CARRO + ANOS REAIS",
-  "marca": "MARCA",
+  "nome": "NOME COMPLETO DO ITEM ENCONTRADO",
+  "marca": "MARCA DO ITEM",
   "desc": "APLICAÇÃO RESUMIDA"
 }
-Se os dados da busca forem inconclusivos, retorne: {"nome": "NÃO ENCONTRADO", "marca": "---", "desc": ""}`;
+
+Se os dados da busca forem irrelevantes para o GTIN ${gtin}, retorne: {"nome": "NÃO ENCONTRADO", "marca": "---", "desc": ""}`;
 
 
         const ollamaRes = await fetch(OLLAMA_URL, {

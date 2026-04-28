@@ -1313,3 +1313,9 @@ tbody tr.conferido {
     overflow: hidden;
 }
 .modal-nome-textarea:focus { border-bottom: 1.5px solid #00009C; }
+
+.quadrado.ok-novo {
+    background-color: #2d7a4a !important;
+    color: white !important;
+    border-color: #2d7a4a !important;
+}

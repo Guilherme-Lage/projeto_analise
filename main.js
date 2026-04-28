@@ -419,12 +419,13 @@ function processarCSV(texto, nomeArquivo) {
         }
 
         const sep = linhas[0].includes('|') ? '|' : (linhas[0].includes(';') ? ';' : ',');
-        const cabecalho = parseLinhaCsv(linhas[0], sep).map(v => v.replace(/^\uFEFF/g, "").toUpperCase().trim());
+        
+        // Proteção no cabeçalho: garante que o valor exista antes de tratar
+        const cabecalho = parseLinhaCsv(linhas[0], sep).map(v => (v || "").replace(/^\uFEFF/g, "").toUpperCase().trim());
         
         const idx = (nome) => cabecalho.findIndex(c => c.includes(nome.toUpperCase()));
         const idxExato = (nome) => cabecalho.findIndex(c => c === nome.toUpperCase());
 
-        // Índices globais conforme sua nova estrutura
         const iUtilizacao = idx('UTILIZACAO');
         const iItemEstoque = idxExato('ITEM_ESTOQUE');
         const iItemEstoquePub = idxExato('ITEM_ESTOQUE_PUB');
@@ -434,7 +435,6 @@ function processarCSV(texto, nomeArquivo) {
         itens = [];
 
         if (ehExportado) {
-            // ── LÓGICA COMPLETA: CSV EXPORTADO ───────────────────────────
             const iStatus = idx('STATUS');
             const iMarca = idx('MARCA');
             const iQtd = idx('QTD_SISTEMA');
@@ -452,28 +452,34 @@ function processarCSV(texto, nomeArquivo) {
                 const cols = parseLinhaCsv(linhas[i], sep);
                 if (cols.length < 2) continue;
 
-                const statusLido = (iStatus >= 0 ? cols[iStatus] : '').toUpperCase();
+                // Proteção com (cols[index] || '') antes do toUpperCase
+                const statusLido = (iStatus >= 0 ? (cols[iStatus] || '') : '').toUpperCase();
                 const fotos = fotoCols.map(fi => cols[fi] || '').filter(f => f.trim() !== '');
 
+                const isNovo = statusLido === 'NOVO';
+                const isAlt = statusLido === 'ALTERNATIVO';
+                const isOk = statusLido === 'OK';
+                const conferido = isOk || isAlt || isNovo;
+
                 itens.push({
-                    itemEstoque: iItemEstoque >= 0 ? cols[iItemEstoque] : '',
-                    codigo: iItemEstoquePub >= 0 ? cols[iItemEstoquePub] : '',
-                    nome: (iDesItemEstoque >= 0 ? cols[iDesItemEstoque] : '').toUpperCase(),
-                    utilizacao: iUtilizacao >= 0 ? cols[iUtilizacao] : '',
-                    locacao: (iLocacao >= 0 ? cols[iLocacao] : '').toUpperCase(),
-                    marca: (iMarca >= 0 ? cols[iMarca] : '').toUpperCase(),
+                    itemEstoque: iItemEstoque >= 0 ? (cols[iItemEstoque] || '') : '',
+                    codigo: iItemEstoquePub >= 0 ? (cols[iItemEstoquePub] || '') : '',
+                    nome: (iDesItemEstoque >= 0 ? (cols[iDesItemEstoque] || '') : '').toUpperCase(),
+                    utilizacao: iUtilizacao >= 0 ? (cols[iUtilizacao] || '') : '',
+                    locacao: (iLocacao >= 0 ? (cols[iLocacao] || '') : '').toUpperCase(),
+                    marca: (iMarca >= 0 ? (cols[iMarca] || '') : '').toUpperCase(),
                     qtd: parseFloat((cols[iQtd] || '0').replace(',', '.')) || 0,
-                    conferido: statusLido === 'OK' || statusLido === 'ALTERNATIVO',
-                    ehAlternativo: statusLido === 'ALTERNATIVO',
+                    conferido: conferido,
+                    ehAlternativo: isAlt,
+                    isNovoItem: isNovo,
                     qtdConferida: (iQtdConf >= 0 && cols[iQtdConf] !== '') ? parseFloat(cols[iQtdConf]) : null,
-                    gtinAntigo: (iGtinAntig >= 0 ? cols[iGtinAntig] : '').toUpperCase(),
-                    gtinNovo: (iGtinNovo >= 0 ? cols[iGtinNovo] : '').toUpperCase(),
+                    gtinAntigo: (iGtinAntig >= 0 ? (cols[iGtinAntig] || '') : '').toUpperCase(),
+                    gtinNovo: (iGtinNovo >= 0 ? (cols[iGtinNovo] || '') : '').toUpperCase(),
                     dataHoraRegistro: iData >= 0 ? cols[iData] : null,
                     fotos: fotos
                 });
             }
         } else {
-            // ── LÓGICA COMPLETA: CSV ORIGINAL DO SISTEMA ─────────────────
             const iQtd = idx('QTD_CONTABIL');
             const iMarcaCSV = idx('MARCA');
             const iZona = idx('LOCACAO_ZONA');
@@ -492,15 +498,15 @@ function processarCSV(texto, nomeArquivo) {
                     .filter(Boolean).join('.');
 
                 itens.push({
-                    itemEstoque: iItemEstoque >= 0 ? cols[iItemEstoque] : '',
-                    codigo: iItemEstoquePub >= 0 ? cols[iItemEstoquePub] : '',
-                    nome: (iDesItemEstoque >= 0 ? cols[iDesItemEstoque] : '---').toUpperCase(),
-                    utilizacao: iUtilizacao >= 0 ? cols[iUtilizacao] : '',
+                    itemEstoque: iItemEstoque >= 0 ? (cols[iItemEstoque] || '') : '',
+                    codigo: iItemEstoquePub >= 0 ? (cols[iItemEstoquePub] || '') : '',
+                    nome: (iDesItemEstoque >= 0 ? (cols[iDesItemEstoque] || '---') : '---').toUpperCase(),
+                    utilizacao: iUtilizacao >= 0 ? (cols[iUtilizacao] || '') : '',
                     qtd: parseFloat((iQtd >= 0 ? cols[iQtd] : '0').replace(',', '.')) || 0,
                     locacao: locacao.toUpperCase(),
-                    gtinAntigo: (iGtin >= 0 ? cols[iGtin] : '---').toUpperCase(),
+                    gtinAntigo: (iGtin >= 0 ? (cols[iGtin] || '---') : '---').toUpperCase(),
                     gtinNovo: '',
-                    marca: (iMarcaCSV >= 0 ? cols[iMarcaCSV] : '').toUpperCase(),
+                    marca: (iMarcaCSV >= 0 ? (cols[iMarcaCSV] || '') : '').toUpperCase(),
                     conferido: false,
                     qtdConferida: null,
                     fotos: []
@@ -512,7 +518,6 @@ function processarCSV(texto, nomeArquivo) {
         renderizarTabela(itens);
         atualizarContador();
         
-        // Mantém a info do arquivo na tela
         let elInfo = document.getElementById('info-arquivo');
         if (!elInfo) {
             elInfo = document.createElement('div');
@@ -522,7 +527,6 @@ function processarCSV(texto, nomeArquivo) {
         }
         elInfo.style.display = 'block';
         elInfo.textContent = `${nomeArquivo} — ${itens.length} itens${ehExportado ? ' (exportado)' : ''}`;
-        
         document.getElementById('btn-limpar').style.display = 'inline-block';
         syncPublicar();
 
@@ -543,9 +547,7 @@ function renderizarTabela(lista) {
         return;
     }
 
-    const locacoesIniciadas = [...new Set(
-        itens.filter(i => i.conferido).map(i => i.locacao)
-    )];
+    const locacoesIniciadas = [...new Set(itens.filter(i => i.conferido).map(i => i.locacao))];
 
     lista.forEach((item) => {
         const globalIdx = itens.indexOf(item);
@@ -557,18 +559,26 @@ function renderizarTabela(lista) {
 
         const estaConferido = item.conferido === true;
         const ehAlerta = !estaConferido && locacoesIniciadas.includes(item.locacao);
-        const ehAlternativo = item.ehAlternativo === true; // Nova verificação
+        const ehAlternativo = item.ehAlternativo === true;
+        const ehNovo = item.isNovoItem === true; // Nova verificação do N verde
 
         if (estaConferido) {
             tr.classList.add('conferido');
 
             if (ehAlternativo) {
-                // Estilo para Item Alternativo
+                // Item Alternativo (A Amarelo)
                 tr.style.background = "#eef0ff";
-                classeQuadrado = "ok-alternativo";
+                classeQuadrado = "ok-alternativo"; // Mantenha sua classe CSS
                 iconeStatus = "A";
-            } else {
-                // Estilo para Item Normal Conferido
+            }
+            else if (ehNovo) {
+                // ITEM NOVO (N Verde)
+                tr.style.background = "#f2fff2"; // Fundo levemente verde
+                classeQuadrado = "ok-novo";      // Vamos definir essa classe abaixo
+                iconeStatus = "N";
+            }
+            else {
+                // Item Normal Conferido (✓ Verde)
                 classeQuadrado = "ok";
                 iconeStatus = "✓";
             }
@@ -579,15 +589,9 @@ function renderizarTabela(lista) {
         }
 
         const buscaAtiva = document.getElementById('busca').value.trim() !== '';
-
         if (!buscaAtiva) {
-            if (ocultar && estaConferido) {
-                tr.style.display = 'none';
-            }
-
-            if (ocultarAlertas && ehAlerta) {
-                tr.style.display = 'none';
-            }
+            if (ocultar && estaConferido) tr.style.display = 'none';
+            if (ocultarAlertas && ehAlerta) tr.style.display = 'none';
         }
 
         tr.onclick = () => gerenciarCliqueItem(globalIdx);
@@ -599,7 +603,7 @@ function renderizarTabela(lista) {
                 </div>
             </td>
             <td class="col-locacao">${item.locacao || '---'}</td>
-            <td class="col-marca">${item.marca || '---'}</td> 
+            <td class="col-marca">${item.marca || '---'}</td>
             <td class="col-codigo">${item.codigo}</td>
             <td class="col-nome">${item.nome}</td>
             <td class="col-gtin">${item.gtinNovo || item.gtinAntigo || '---'}</td>
@@ -608,42 +612,49 @@ function renderizarTabela(lista) {
     });
 
     if (typeof atualizarContador === "function") atualizarContador();
-
-
 }
 
 
 function atualizarContador() {
-    const elConf = document.getElementById('cnt-conf');
-    const elTotal = document.getElementById('cnt-total');
-    const painel = document.getElementById('contador');
-
-    if (itens.length > 0) {
-        painel.style.display = 'block';
-
-        const total = itens.length;
-        const conferidos = itens.filter(i => i.conferido).length;
-
-        if (elConf) elConf.textContent = conferidos;
-        if (elTotal) elTotal.textContent = total;
-
-        // --- LÓGICA DE CORES ---
-        if (conferidos === 0) {
-            // 1. BRANCO quando for zero
-            painel.style.backgroundColor = "#ffffff";
-            painel.style.color = "#000000";
-        } else if (conferidos < total) {
-            // 2. AMARELO enquanto estiver conferindo
-            painel.style.backgroundColor = "#fff9c4"; // Amarelo suave
-            painel.style.color = "#000000"; // Marrom para ler melhor no amarelo
-        } else {
-            // 3. VERDE quando o total for atingido
-            painel.style.backgroundColor = "#155724"; // Verde suave
-            painel.style.color = "#ffffff"; // Verde escuro para o texto
-        }
-    } else {
-        if (painel) painel.style.display = 'none';
+    // Atualiza botão de estatísticas no dropdown (mini resumo)
+    const conf  = itens.filter(i => i.conferido).length;
+    const total = itens.length;
+    const btnStats = document.getElementById('btn-stats-mini');
+    if (btnStats) {
+        btnStats.textContent = total > 0
+            ? `Estatísticas  (${conf}/${total})`
+            : 'Estatísticas';
     }
+    // const elConf = document.getElementById('cnt-conf');
+    // const elTotal = document.getElementById('cnt-total');
+    //  const painel = document.getElementById('contador-painel');
+
+    // if (itens.length > 0) {
+    //     painel.style.display = 'block';
+
+    //     const total = itens.length;
+    //     const conferidos = itens.filter(i => i.conferido).length;
+
+    //     if (elConf) elConf.textContent = conferidos;
+    //     if (elTotal) elTotal.textContent = total;
+
+    //     // --- LÓGICA DE CORES ---
+    //     if (conferidos === 0) {
+    //         // 1. BRANCO quando for zero
+    //         painel.style.backgroundColor = "#ffffff";
+    //         painel.style.color = "#000000";
+    //     } else if (conferidos < total) {
+    //         // 2. AMARELO enquanto estiver conferindo
+    //         painel.style.backgroundColor = "#fff9c4"; // Amarelo suave
+    //         painel.style.color = "#000000"; // Marrom para ler melhor no amarelo
+    //     } else {
+    //         // 3. VERDE quando o total for atingido
+    //         painel.style.backgroundColor = "#155724"; // Verde suave
+    //         painel.style.color = "#ffffff"; // Verde escuro para o texto
+    //     }
+    // } else {
+    //     if (painel) painel.style.display = 'none';
+    // }
 }
 
 
@@ -717,7 +728,6 @@ function filtrar() {
     renderizarTabela(resultados);
 }
 function exportarCSV() {
-    console.log(itens[0])
     try {
         if (itens.length === 0) {
             alert('Carregue um arquivo primeiro!');
@@ -725,7 +735,7 @@ function exportarCSV() {
         }
 
         const maxFotos = 5;
-        // 1. Cabeçalho na sequência que você definiu
+        // 1. Cabeçalho rigoroso
         let colunas = [
             'STATUS', 'ITEM_ESTOQUE', 'ITEM_ESTOQUE_PUB', 'DES_ITEM_ESTOQUE', 
             'MARCA', 'UTILIZACAO_ITEM', 'QTD_SISTEMA', 'QTD_CONFERIDA', 
@@ -738,46 +748,49 @@ function exportarCSV() {
 
         const linhas = [colunas.join('|')];
 
-        // 2. Processamento dos itens
         itens.forEach(item => {
             const qtdC = item.qtdConferida != null ? item.qtdConferida : '';
-            let statusExport = 'PENDENTE';
-            if (item.ehAlternativo) {
-                statusExport = 'ALTERNATIVO';
-            } else if (item.conferido) {
-                statusExport = 'OK';
-            }
+            
+            // Lógica de Status (Incluindo ALERTA e NOVO)
+            const locacoesIniciadas = [...new Set(itens.filter(i => i.conferido).map(i => i.locacao))];
+            const estaConferido = item.conferido === true;
+            const ehAlerta = !estaConferido && locacoesIniciadas.includes(item.locacao);
 
-            // MAPEAMENTO CORRIGIDO:
+            let statusExport = 'PENDENTE';
+            if (item.ehAlternativo) statusExport = 'ALTERNATIVO';
+            else if (item.isNovoItem) statusExport = 'NOVO';
+            else if (ehAlerta) statusExport = 'ALERTA';
+            else if (estaConferido) statusExport = 'OK';
+
+            // 2. Montagem do Registro - ORDEM EXATA DAS COLUNAS
+            // Usamos .trim() para evitar que espaços joguem o texto para o lado como na imagem
             let registro = [
-                statusExport,
-                item.itemEstoque || '',       // Agora vai puxar o ITEM_ESTOQUE (estava vindo vazio aqui)
-                item.codigo || '',            // Puxa o ITEM_ESTOQUE_PUB (que salvamos como 'codigo')
-                `"${item.nome || ''}"`,       // Puxa o DES_ITEM_ESTOQUE (que salvamos como 'nome')
-                item.marca || '',
-                `"${item.utilizacao || ''}"`,
-                item.qtd,
-                qtdC,
-                item.locacaoOriginal || item.locacao,
-                item.locacaoNova || '',
-                item.gtinAntigo || '',
-                item.gtinNovo || '',
-                item.dataHoraRegistro || ''
+                statusExport,                                // STATUS
+                (item.itemEstoque || '').toString().trim(),  // ITEM_ESTOQUE
+                (item.codigo || '').toString().trim(),       // ITEM_ESTOQUE_PUB
+                `"${(item.nome || '').trim()}"`,             // DES_ITEM_ESTOQUE
+                (item.marca || '').trim(),                   // MARCA
+                `"${(item.utilizacao || '').trim()}"`,       // UTILIZACAO_ITEM
+                item.qtd || 0,                               // QTD_SISTEMA
+                qtdC,                                        // QTD_CONFERIDA
+                (item.locacaoOriginal || item.locacao || '').trim(), // LOCACAO
+                (item.locacaoNova || '').trim(),             // LOCACAO_NOVA
+                (item.gtinAntigo || '').trim(),              // GTIN_ANTIGO
+                (item.gtinNovo || '').trim(),                // GTIN_NOVO
+                (item.dataHoraRegistro || '').trim()         // DATA_HORA
             ];
 
-            // 3. Adiciona as fotos
+            // 3. Fotos
             for (let i = 0; i < maxFotos; i++) {
-                if (item.fotos && item.fotos[i]) {
-                    registro.push(`"${item.fotos[i]}"`);
-                } else {
-                    registro.push('""');
-                }
+                const foto = item.fotos && item.fotos[i] ? item.fotos[i] : "";
+                registro.push(`"${foto}"`);
             }
 
+            // Unimos com o separador pipe sem espaços em volta
             linhas.push(registro.join('|'));
         });
 
-        // 4. Gerar arquivo
+        // 4. Geração do arquivo (UTF-8 com BOM para o Excel ler acentos)
         const csvContent = "\uFEFF" + linhas.join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -793,6 +806,7 @@ function exportarCSV() {
         console.error("Erro ao exportar:", erro);
     }
 }
+
 
 
 
@@ -1300,37 +1314,41 @@ async function confirmarNovo() {
     const qtdVal = document.getElementById('novo-qtdo').value;
     const qtd = qtdVal !== '' ? parseFloat(qtdVal) : 0;
 
-    const isAlt = document.getElementById('novo-is-alternativo')?.checked || false;
-
     if (!codigo) { alert('Código é obrigatório.'); return; }
     if (!locacao) { alert('Locação é obrigatória.'); return; }
 
+    // --- LÓGICA DE STATUS AUTOMÁTICA ---
+    // Verifica se o código digitado já existe em algum item do arquivo original
+    const codigoJaExiste = itens.some(i => i.codigo.toUpperCase() === codigo && !i.isNovoItem);
+
     const agora = new Date();
-    const dt = agora.toLocaleDateString('pt-BR') + ' ' +
-        agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const dt = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
     const novoItem = {
         locacao,
         codigo,
         nome: nome || '---',
-        qtd: qtd,
-        gtinAntigo: gtinAnt,
+        qtd: 0, // Itens novos não têm quantidade contábil prévia
+        gtinAntigo: gtinAnt || 'NOVO',
         gtinNovo: gtinNov,
         marca,
         conferido: true,
-        ehAlternativo: isAlt,
+
+        // --- AQUI ESTÁ A REGRA SOLICITADA ---
+        ehAlternativo: codigoJaExiste, // Vem como ALTERNATIVO se o código já existe
+        isNovoItem: !codigoJaExiste,   // Vem como NOVO se o código for inédito
+        // ------------------------------------
+
         qtdConferida: qtd,
         dataHoraRegistro: dt,
-        // --- MUDANÇA AQUI: Agora ele pega as fotos que estão na memória temporária ---
         fotos: [...fotosTempNovo],
         adicionadoManualmente: true
     };
 
     itens.push(novoItem);
 
-    // Limpa as fotos temporárias para o próximo item não vir com a foto do anterior
+    // Limpezas e atualizações
     fotosTempNovo = [];
-
     itens.sort((a, b) => a.locacao.localeCompare(b.locacao, undefined, { numeric: true }));
 
     await salvarBackup();
@@ -1339,10 +1357,11 @@ async function confirmarNovo() {
     document.getElementById('btn-limpar').style.display = 'inline-block';
     renderizarTabela(itens);
     atualizarContador();
-
     fecharModalNovo();
+
     try { adicionarLog(novoItem); } catch (e) { }
 }
+
 
 
 document.addEventListener('keydown', function (e) {
@@ -1633,13 +1652,13 @@ function centralizarItemNaTela(globalIdx) {
 
 
 function abrirModalIAGemini() {
-      document.getElementById('modal-ia-overlay').classList.add('aberto');
-    
-   
+    document.getElementById('modal-ia-overlay').classList.add('aberto');
+
+
     const chaveFixa = '';
-    
+
     document.getElementById('ia-gemini-key').value = chaveFixa;
-    
+
     setTimeout(() => {
         document.getElementById('ia-gtin').focus();
     }, 150);
@@ -1675,13 +1694,13 @@ async function buscarProdutoComGemini() {
 
         // Captura o texto puro primeiro para evitar quebrar no JSON
         const textoPuro = await response.text();
-        
+
         if (!response.ok) {
             let msgErro = "Erro ao consultar o Gemini.";
             try {
                 const erroObj = JSON.parse(textoPuro);
                 msgErro = erroObj.error || msgErro;
-            } catch(e) {
+            } catch (e) {
                 msgErro = textoPuro || msgErro;
             }
             throw new Error(msgErro);
@@ -1697,13 +1716,13 @@ async function buscarProdutoComGemini() {
 
         fecharModalIA();
         abrirModalNovo();
-        
+
         setTimeout(() => {
-            document.getElementById('novo-codigo').value = gtin; 
+            document.getElementById('novo-codigo').value = gtin;
             document.getElementById('novo-nome').value = produto.nome.toUpperCase();
             document.getElementById('novo-marca').value = produto.marca.toUpperCase();
             document.getElementById('novo-gtin-novo').value = gtin;
-            
+
             console.log("Descrição da IA:", produto.desc);
             alert("✨ Produto encontrado pela IA e preenchido com sucesso!");
         }, 300);
@@ -1732,7 +1751,7 @@ async function verificarComIA() {
     const item = itens[idxModalAtual];
 
     const gtinEl = document.getElementById('modal-gtin-novo');
-    const gtin   = (gtinEl?.value || item.gtinNovo || item.gtinAntigo || '').trim();
+    const gtin = (gtinEl?.value || item.gtinNovo || item.gtinAntigo || '').trim();
 
     if (!gtin) {
         alert('Preencha o campo GTIN Novo antes de verificar com a IA.');
@@ -1740,18 +1759,18 @@ async function verificarComIA() {
         return;
     }
 
-    const overlay  = document.getElementById('modal-ia-conf-overlay');
-    const status   = document.getElementById('ia-conf-status');
-    const corpo    = document.getElementById('ia-conf-corpo');
-    const acoes    = document.getElementById('ia-conf-acoes');
-    const sFechar  = document.getElementById('ia-conf-apenas-fechar');
+    const overlay = document.getElementById('modal-ia-conf-overlay');
+    const status = document.getElementById('ia-conf-status');
+    const corpo = document.getElementById('ia-conf-corpo');
+    const acoes = document.getElementById('ia-conf-acoes');
+    const sFechar = document.getElementById('ia-conf-apenas-fechar');
 
     overlay.classList.add('aberto');
-    status.style.display  = 'block';
-    status.style.color    = '#888';
-    status.textContent    = '🔍 Consultando IA com o GTIN ' + gtin + '...';
-    corpo.style.display   = 'none';
-    acoes.style.display   = 'none';
+    status.style.display = 'block';
+    status.style.color = '#888';
+    status.textContent = '🔍 Consultando IA com o GTIN ' + gtin + '...';
+    corpo.style.display = 'none';
+    acoes.style.display = 'none';
     sFechar.style.display = 'flex';
 
     try {
@@ -1767,7 +1786,7 @@ async function verificarComIA() {
         const prod = data.produto;
 
         // Preenche comparativo
-        document.getElementById('ia-atual-nome').textContent  = item.nome  || '---';
+        document.getElementById('ia-atual-nome').textContent = item.nome || '---';
         document.getElementById('ia-atual-marca').textContent = item.marca || '---';
 
         const elNomeIA = document.getElementById('ia-novo-nome');
@@ -1775,21 +1794,21 @@ async function verificarComIA() {
         setTimeout(() => autoResizeNome(elNomeIA), 10);
 
         document.getElementById('ia-novo-marca').value = prod.marca || '';
-        document.getElementById('ia-novo-desc').textContent  = prod.desc  || '(sem descrição)';
+        document.getElementById('ia-novo-desc').textContent = prod.desc || '(sem descrição)';
 
         // Marca checkbox só onde há diferença
-        document.getElementById('ia-chk-nome').checked  = (prod.nome  || '').toUpperCase() !== (item.nome  || '').toUpperCase();
+        document.getElementById('ia-chk-nome').checked = (prod.nome || '').toUpperCase() !== (item.nome || '').toUpperCase();
         document.getElementById('ia-chk-marca').checked = (prod.marca || '').toUpperCase() !== (item.marca || '').toUpperCase();
 
-        status.style.display  = 'none';
-        corpo.style.display   = 'block';
-        acoes.style.display   = 'grid';
+        status.style.display = 'none';
+        corpo.style.display = 'block';
+        acoes.style.display = 'grid';
         sFechar.style.display = 'none';
 
     } catch (erro) {
         console.error('[IA]', erro);
-        status.style.color   = '#CC0000';
-        status.textContent   = '❌ ' + erro.message + '\n\nVerifique se o servidor está rodando e o Ollama está ativo (ollama serve).';
+        status.style.color = '#CC0000';
+        status.textContent = '❌ ' + erro.message + '\n\nVerifique se o servidor está rodando e o Ollama está ativo (ollama serve).';
     }
 }
 
@@ -1832,4 +1851,98 @@ function autoResizeNome(el) {
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = el.scrollHeight + 'px';
+}
+// ═══════════════════════════════════════════════════════════════
+//  MODAL DE ESTATÍSTICAS
+// ═══════════════════════════════════════════════════════════════
+
+function fecharEstatisticas() {
+    document.getElementById('modal-stats-overlay').classList.remove('aberto');
+    // Fecha também o dropdown
+    const dd = document.getElementById('dropdown-config');
+    if (dd) dd.classList.remove('aberto');
+}
+
+function abrirEstatisticas() {
+    const total       = itens.length;
+    const conferidos  = itens.filter(i => i.conferido).length; // inclui novos e alternativos
+    const novos       = itens.filter(i => i.isNovoItem === true).length;
+    const alternativos= itens.filter(i => i.ehAlternativo === true).length;
+    const pendentes   = itens.filter(i => !i.conferido).length;
+
+    // Alerta: itens pendentes em locação que tem pelo menos 1 conferido
+    const locacoesComConf = new Set(itens.filter(i => i.conferido).map(i => i.locacao));
+    const alertas = itens.filter(i => !i.conferido && locacoesComConf.has(i.locacao)).length;
+
+    // GTIN Novo = GTIN Antigo (possível erro / sem mudança)
+    const gtinIgual = itens.filter(i => {
+        const ant = (i.gtinAntigo || '').trim();
+        const nov = (i.gtinNovo   || '').trim();
+        return nov && ant && nov === ant;
+    }).length;
+
+    // GTIN Novo preenchido (foi atualizado)
+    const gtinAtualizado = itens.filter(i => {
+        const ant = (i.gtinAntigo || '').trim();
+        const nov = (i.gtinNovo   || '').trim();
+        return nov && nov !== ant;
+    }).length;
+
+    // Progresso %
+    const pct = total > 0 ? Math.round(((total - pendentes) / total) * 100) : 0;
+
+    // Cor barra de progresso
+    const corBarra = pct === 100 ? '#2d7a4a' : pct >= 50 ? '#f39c12' : '#CC0000';
+
+    const corpo = document.getElementById('stats-corpo');
+    corpo.innerHTML = `
+        <!-- Barra de progresso -->
+        <div style="padding:14px 16px; border-bottom:1.5px solid #eee;">
+            <div style="display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#888; margin-bottom:6px;">
+                <span>PROGRESSO</span><span style="font-weight:700; color:${corBarra};">${pct}%</span>
+            </div>
+            <div style="background:#eee; border-radius:4px; height:8px; overflow:hidden;">
+                <div style="background:${corBarra}; width:${pct}%; height:100%; border-radius:4px; transition:width 0.4s;"></div>
+            </div>
+        </div>
+
+        <!-- Cards de estatísticas -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1px; background:#eee;">
+
+            ${statCard('✅ Conferidos', conferidos, '#2d7a4a', '#edf7f0')}
+            ${statCard('⏳ Pendentes',  pendentes,   '#CC0000', '#fff0f0')}
+            ${statCard('⚠️ Alertas',    alertas,     '#b87d00', '#fff9c4')}
+            ${statCard('➕ Novos',      novos,        '#00009C', '#eef0ff')}
+            ${statCard('🔄 Alternativos', alternativos, '#6a0dad', '#f5eeff')}
+            ${statCard('📦 Total',      total,        '#1a1a1a', '#f7f7f7')}
+        </div>
+
+        <!-- GTIN -->
+        <div style="border-top:1.5px solid #eee; padding:12px 16px; font-family:'IBM Plex Mono',monospace;">
+            <div style="font-size:10px; font-weight:700; letter-spacing:0.1em; color:#888; margin-bottom:10px; text-transform:uppercase;">GTIN</div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:12px; color:#1a1a1a;">🔄 Atualizados (novo ≠ antigo)</span>
+                <span style="font-size:14px; font-weight:700; color:#2d7a4a;">${gtinAtualizado}</span>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px;">
+                <span style="font-size:12px; font-family:'IBM Plex Mono',monospace;">⚠️ Novo = Antigo (sem mudança)</span>
+                <span style="font-size:14px; font-weight:700; color:#b87d00;">${gtinIgual}</span>
+            </div>
+        </div>
+    `;
+
+    // Fecha dropdown e abre modal
+    const dd = document.getElementById('dropdown-config');
+    if (dd) dd.classList.remove('aberto');
+    document.getElementById('modal-stats-overlay').classList.add('aberto');
+}
+
+function statCard(label, valor, cor, bg) {
+    return `
+        <div style="background:${bg}; padding:14px 16px; display:flex; flex-direction:column; gap:4px;">
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:10px; color:#888; letter-spacing:0.08em; text-transform:uppercase;">${label}</span>
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:28px; font-weight:700; color:${cor}; line-height:1;">${valor}</span>
+        </div>`;
 }
