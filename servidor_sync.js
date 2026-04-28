@@ -94,7 +94,7 @@ app.post('/sync/limpar', (req, res) => {
 // 5. Consulta IA local via Ollama (Gemma3 — sem chave, sem limite)
 app.post('/sync/gemini', async (req, res) => {
     const { gtin } = req.body;
-    const SERP_API_KEY = "ac7e806331532e4af96ee3df4bfe224455efbae00c7eddc1a7305969178a4236"; // Sua chave da SerpApi
+    const SERP_API_KEY = "c479d73e580ac68952733022cb27969fa200a5c77c8f8a36308971c3453e6e67"; // Sua chave da SerpApi
 
     if (!gtin) return res.status(400).json({ error: 'GTIN ausente' });
 

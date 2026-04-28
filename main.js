@@ -413,35 +413,36 @@ function splitLinhasCSV(texto) {
 function processarCSV(texto, nomeArquivo) {
     try {
         const linhas = splitLinhasCSV(texto);
-        if (linhas.length < 2) { alert('Arquivo CSV vazio ou inválido.'); return; }
+        if (linhas.length < 2) {
+            alert('Arquivo CSV vazio ou inválido.');
+            return;
+        }
 
         const sep = linhas[0].includes('|') ? '|' : (linhas[0].includes(';') ? ';' : ',');
-        const cabecalho = parseLinhaCsv(linhas[0], sep).map(v => v.toUpperCase().trim());
+        const cabecalho = parseLinhaCsv(linhas[0], sep).map(v => v.replace(/^\uFEFF/g, "").toUpperCase().trim());
         
-        // Função auxiliar para encontrar colunas mesmo que o nome mude um pouco
         const idx = (nome) => cabecalho.findIndex(c => c.includes(nome.toUpperCase()));
+        const idxExato = (nome) => cabecalho.findIndex(c => c === nome.toUpperCase());
 
-        const ehExportado = idx('STATUS') >= 0 && idx('LOCACAO') >= 0 && (idx('CODIGO') >= 0 || idx('ITEM_ESTOQUE_PUB') >= 0);
+        // Índices globais conforme sua nova estrutura
+        const iUtilizacao = idx('UTILIZACAO');
+        const iItemEstoque = idxExato('ITEM_ESTOQUE');
+        const iItemEstoquePub = idxExato('ITEM_ESTOQUE_PUB');
+        const iDesItemEstoque = idxExato('DES_ITEM_ESTOQUE');
+
+        const ehExportado = idx('STATUS') >= 0 && idx('LOCACAO') >= 0;
         itens = [];
 
-        // Captura o índice da coluna UTILIZACAO globalmente
-        const iUtilizacao = idx('UTILIZACAO');
-        let iGtin = idx('COD_EAN_GTIN');
-        if (iGtin < 0) iGtin = idx('GTIN');
-
         if (ehExportado) {
-            // ── 1. CASO: CSV QUE JÁ FOI EXPORTADO PELO SEU SISTEMA ────────────────
+            // ── LÓGICA COMPLETA: CSV EXPORTADO ───────────────────────────
             const iStatus = idx('STATUS');
             const iMarca = idx('MARCA');
-            const iCodigo = idx('CODIGO') >= 0 ? idx('CODIGO') : idx('ITEM_ESTOQUE_PUB');
-            const iNome = idx('NOME') >= 0 ? idx('NOME') : idx('DES_ITEM_ESTOQUE');
-            const iQtd = idx('QTD_SISTEMA') >= 0 ? idx('QTD_SISTEMA') : idx('QTD');
+            const iQtd = idx('QTD_SISTEMA');
             const iQtdConf = idx('QTD_CONFERIDA');
             const iLocacao = idx('LOCACAO');
-            const iGtinAntig = idx('GTIN_ANTIGO') >= 0 ? idx('GTIN_ANTIGO') : iGtin;
+            const iGtinAntig = idx('GTIN_ANTIGO');
             const iGtinNovo = idx('GTIN_NOVO');
             const iData = idx('DATA_HORA');
-
             const fotoCols = cabecalho.reduce((acc, nome, i) => {
                 if (/^FOTO_\d+$/.test(nome)) acc.push(i);
                 return acc;
@@ -455,58 +456,48 @@ function processarCSV(texto, nomeArquivo) {
                 const fotos = fotoCols.map(fi => cols[fi] || '').filter(f => f.trim() !== '');
 
                 itens.push({
-                    locacao: (iLocacao >= 0 ? cols[iLocacao] : 'S/L').toUpperCase(),
-                    codigo: (iCodigo >= 0 ? cols[iCodigo] : 'S/C').toUpperCase(),
-                    nome: (iNome >= 0 ? cols[iNome] : '---').toUpperCase(),
-                    marca: (iMarca >= 0 ? cols[iMarca] : '').toUpperCase(),
+                    itemEstoque: iItemEstoque >= 0 ? cols[iItemEstoque] : '',
+                    codigo: iItemEstoquePub >= 0 ? cols[iItemEstoquePub] : '',
+                    nome: (iDesItemEstoque >= 0 ? cols[iDesItemEstoque] : '').toUpperCase(),
                     utilizacao: iUtilizacao >= 0 ? cols[iUtilizacao] : '',
-                    qtd: parseFloat((cols[iQtd] || '0').toString().replace(',', '.')) || 0,
-                    gtinAntigo: (iGtinAntig >= 0 ? cols[iGtinAntig] : '---').toUpperCase(),
-                    gtinNovo: (iGtinNovo >= 0 ? cols[iGtinNovo] : '').toUpperCase(),
-                    dataHoraRegistro: iData >= 0 ? cols[iData] : null,
-                    conferido: statusLido === 'OK' || statusLido === 'ALTERNATIVO' || statusLido === 'CONFERIDO',
+                    locacao: (iLocacao >= 0 ? cols[iLocacao] : '').toUpperCase(),
+                    marca: (iMarca >= 0 ? cols[iMarca] : '').toUpperCase(),
+                    qtd: parseFloat((cols[iQtd] || '0').replace(',', '.')) || 0,
+                    conferido: statusLido === 'OK' || statusLido === 'ALTERNATIVO',
                     ehAlternativo: statusLido === 'ALTERNATIVO',
                     qtdConferida: (iQtdConf >= 0 && cols[iQtdConf] !== '') ? parseFloat(cols[iQtdConf]) : null,
+                    gtinAntigo: (iGtinAntig >= 0 ? cols[iGtinAntig] : '').toUpperCase(),
+                    gtinNovo: (iGtinNovo >= 0 ? cols[iGtinNovo] : '').toUpperCase(),
+                    dataHoraRegistro: iData >= 0 ? cols[iData] : null,
                     fotos: fotos
                 });
             }
-
         } else {
-            // ── 2. CASO: CSV ORIGINAL QUE VEM DO SEU ERP (SISTEMA) ────────────────
-            // Tentativa de mapear ITEM_ESTOQUE_PUB ou similar para evitar undefined
-            let iCodigo = idx('ITEM_ESTOQUE_PUB');
-            if (iCodigo < 0) iCodigo = idx('CODIGO');
-            if (iCodigo < 0) iCodigo = 0; // Se não achar nada, assume a primeira coluna
-
-            let iNome = idx('DES_ITEM_ESTOQUE');
-            if (iNome < 0) iNome = idx('NOME');
-
-            let iQtd = idx('QTD_CONTABIL');
-            if (iQtd < 0) iQtd = idx('SALDO');
-            if (iQtd < 0) iQtd = idx('QTD');
-
+            // ── LÓGICA COMPLETA: CSV ORIGINAL DO SISTEMA ─────────────────
+            const iQtd = idx('QTD_CONTABIL');
             const iMarcaCSV = idx('MARCA');
             const iZona = idx('LOCACAO_ZONA');
             const iRua = idx('LOCACAO_RUA');
             const iEstante = idx('LOCACAO_ESTANTE');
             const iPrateleira = idx('LOCACAO_PRATELEIRA');
             const iNumero = idx('LOCACAO_NUMERO');
+            let iGtin = idx('COD_EAN_GTIN'); if (iGtin < 0) iGtin = idx('GTIN');
 
             for (let i = 1; i < linhas.length; i++) {
                 const cols = parseLinhaCsv(linhas[i], sep);
                 if (cols.length < 2) continue;
 
-                // Monta a locação combinando as colunas de endereço
                 const locacao = [iZona, iRua, iEstante, iPrateleira, iNumero]
                     .map(x => (x >= 0 && cols[x]) ? cols[x].trim() : '')
                     .filter(Boolean).join('.');
 
                 itens.push({
-                    locacao: locacao.toUpperCase() || 'S/L',
-                    codigo: (cols[iCodigo] || `ERR-${i}`).trim().toUpperCase(),
-                    nome: (iNome >= 0 ? cols[iNome] : 'PRODUTO SEM NOME').toUpperCase(),
+                    itemEstoque: iItemEstoque >= 0 ? cols[iItemEstoque] : '',
+                    codigo: iItemEstoquePub >= 0 ? cols[iItemEstoquePub] : '',
+                    nome: (iDesItemEstoque >= 0 ? cols[iDesItemEstoque] : '---').toUpperCase(),
                     utilizacao: iUtilizacao >= 0 ? cols[iUtilizacao] : '',
-                    qtd: parseFloat((iQtd >= 0 ? cols[iQtd] : '0').toString().replace(',', '.')) || 0,
+                    qtd: parseFloat((iQtd >= 0 ? cols[iQtd] : '0').replace(',', '.')) || 0,
+                    locacao: locacao.toUpperCase(),
                     gtinAntigo: (iGtin >= 0 ? cols[iGtin] : '---').toUpperCase(),
                     gtinNovo: '',
                     marca: (iMarcaCSV >= 0 ? cols[iMarcaCSV] : '').toUpperCase(),
@@ -517,13 +508,11 @@ function processarCSV(texto, nomeArquivo) {
             }
         }
 
-        // Ordena por locação (alfanumérico)
         itens.sort((a, b) => a.locacao.localeCompare(b.locacao, undefined, { numeric: true }));
-
         renderizarTabela(itens);
         atualizarContador();
-
-        // Atualiza a barra de informações sobre o arquivo
+        
+        // Mantém a info do arquivo na tela
         let elInfo = document.getElementById('info-arquivo');
         if (!elInfo) {
             elInfo = document.createElement('div');
@@ -532,20 +521,16 @@ function processarCSV(texto, nomeArquivo) {
             document.querySelector('.tabela-wrapper').before(elInfo);
         }
         elInfo.style.display = 'block';
-        elInfo.textContent = `${nomeArquivo} — ${itens.length} itens ${ehExportado ? '(Exportado)' : '(Original)'}`;
+        elInfo.textContent = `${nomeArquivo} — ${itens.length} itens${ehExportado ? ' (exportado)' : ''}`;
         
         document.getElementById('btn-limpar').style.display = 'inline-block';
-        
-        // Salva e Sincroniza
-        salvarBackup();
         syncPublicar();
 
     } catch (erro) {
-        console.error("Erro crítico ao processar o CSV:", erro);
-        alert("Erro ao ler o arquivo. Verifique o console do navegador.");
+        console.error("Erro ao processar CSV:", erro);
+        alert("Erro ao ler o arquivo: " + erro.message);
     }
 }
-
 
 
 function renderizarTabela(lista) {
@@ -732,6 +717,7 @@ function filtrar() {
     renderizarTabela(resultados);
 }
 function exportarCSV() {
+    console.log(itens[0])
     try {
         if (itens.length === 0) {
             alert('Carregue um arquivo primeiro!');
@@ -739,7 +725,7 @@ function exportarCSV() {
         }
 
         const maxFotos = 5;
-        // 1. Cabeçalho alinhado com sua mudança
+        // 1. Cabeçalho na sequência que você definiu
         let colunas = [
             'STATUS', 'ITEM_ESTOQUE', 'ITEM_ESTOQUE_PUB', 'DES_ITEM_ESTOQUE', 
             'MARCA', 'UTILIZACAO_ITEM', 'QTD_SISTEMA', 'QTD_CONFERIDA', 
@@ -762,12 +748,12 @@ function exportarCSV() {
                 statusExport = 'OK';
             }
 
-            // CORREÇÃO AQUI: Mapeando as chaves corretas que vêm do processarCSV
+            // MAPEAMENTO CORRIGIDO:
             let registro = [
                 statusExport,
-                item.itemEstoque || '',       // Pegando itemEstoque em vez de vazio
-                item.codigo || '',         // Pegando codigoPub em vez de codigo
-                `"${item.nome || ''}"`,       // DES_ITEM_ESTOQUE
+                item.itemEstoque || '',       // Agora vai puxar o ITEM_ESTOQUE (estava vindo vazio aqui)
+                item.codigo || '',            // Puxa o ITEM_ESTOQUE_PUB (que salvamos como 'codigo')
+                `"${item.nome || ''}"`,       // Puxa o DES_ITEM_ESTOQUE (que salvamos como 'nome')
                 item.marca || '',
                 `"${item.utilizacao || ''}"`,
                 item.qtd,
