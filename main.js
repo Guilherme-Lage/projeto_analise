@@ -1311,8 +1311,7 @@ async function confirmarNovo() {
     const marca = (document.getElementById('novo-marca').value || '').trim().toUpperCase();
     const gtinAnt = (document.getElementById('novo-gtin-antigo').value || '').trim().toUpperCase();
     const gtinNov = (document.getElementById('novo-gtin-novo').value || '').trim().toUpperCase();
-    const qtdVal = document.getElementById('novo-qtdo').value;
-    const qtd = qtdVal !== '' ? parseFloat(qtdVal) : 0;
+
 
     if (!codigo) { alert('Código é obrigatório.'); return; }
     if (!locacao) { alert('Locação é obrigatória.'); return; }
@@ -1338,8 +1337,6 @@ async function confirmarNovo() {
         ehAlternativo: codigoJaExiste, // Vem como ALTERNATIVO se o código já existe
         isNovoItem: !codigoJaExiste,   // Vem como NOVO se o código for inédito
         // ------------------------------------
-
-        qtdConferida: qtd,
         dataHoraRegistro: dt,
         fotos: [...fotosTempNovo],
         adicionadoManualmente: true
@@ -1946,3 +1943,4 @@ function statCard(label, valor, cor, bg) {
             <span style="font-family:'IBM Plex Mono',monospace; font-size:28px; font-weight:700; color:${cor}; line-height:1;">${valor}</span>
         </div>`;
 }
+
