@@ -440,6 +440,7 @@ function processarCSV(texto, nomeArquivo) {
             const iQtd = idx('QTD_SISTEMA');
             const iQtdConf = idx('QTD_CONFERIDA');
             const iLocacao = idx('LOCACAO');
+            const iLocacaoNova = idx('LOCACAO_NOVA');
             const iGtinAntig = idx('GTIN_ANTIGO');
             const iGtinNovo = idx('GTIN_NOVO');
             const iData = idx('DATA_HORA');
@@ -466,7 +467,14 @@ function processarCSV(texto, nomeArquivo) {
                     codigo: iItemEstoquePub >= 0 ? (cols[iItemEstoquePub] || '') : '',
                     nome: (iDesItemEstoque >= 0 ? (cols[iDesItemEstoque] || '') : '').toUpperCase(),
                     utilizacao: iUtilizacao >= 0 ? (cols[iUtilizacao] || '') : '',
-                    locacao: (iLocacao >= 0 ? (cols[iLocacao] || '') : '').toUpperCase(),
+                    locacaoOriginal: (iLocacao >= 0 ? (cols[iLocacao] || '') : '').toUpperCase(),
+                    locacaoNova: (iLocacaoNova >= 0 ? (cols[iLocacaoNova] || '') : '').toUpperCase(),
+                    trocaLocacao: (iLocacaoNova >= 0 && (cols[iLocacaoNova] || '').trim() !== ''),
+                    locacao: (() => {
+                        const nova = (iLocacaoNova >= 0 ? (cols[iLocacaoNova] || '') : '').trim().toUpperCase();
+                        const orig = (iLocacao >= 0 ? (cols[iLocacao] || '') : '').trim().toUpperCase();
+                        return nova || orig;
+                    })(),
                     marca: (iMarca >= 0 ? (cols[iMarca] || '') : '').toUpperCase(),
                     qtd: parseFloat((cols[iQtd] || '0').replace(',', '.')) || 0,
                     conferido: conferido,
@@ -914,7 +922,6 @@ window.onload = async () => {
 
                     // Mostra os botões de controle
                     document.getElementById('btn-limpar').style.display = 'inline-block';
-                    document.getElementById('contador').style.display = 'block';
 
                     const elInfo = document.getElementById('info-arquivo');
                     if (elInfo) {
@@ -1105,7 +1112,7 @@ function abrirModalNovo() {
     fecharSugestoes();
     document.getElementById('modal-novo-overlay').classList.add('aberto');
     setTimeout(() => {
-        const el = document.getElementById('novo-locacao');
+        const el = document.getElementById('novo-codigo');
         if (el) { el.focus(); }
     }, 150);
 }
@@ -1121,7 +1128,42 @@ function fecharModalNovoFora(e) {
 
 function fecharSugestoes() {
     const lista = document.getElementById('sugestoes-lista');
+    const btn = document.getElementById('btn-toggle-sugestoes');
     if (lista) lista.style.display = 'none';
+    if (btn) btn.textContent = '▼';
+}
+
+function toggleSugestoes() {
+    const lista = document.getElementById('sugestoes-lista');
+    const btn = document.getElementById('btn-toggle-sugestoes');
+    const inputCod = document.getElementById('novo-codigo');
+    if (!lista) return;
+
+    if (lista.style.display === 'block') {
+        // Fecha
+        lista.style.display = 'none';
+        if (btn) btn.textContent = '▼';
+    } else {
+        // Abre — garante que tem conteúdo
+        const termo = (inputCod?.value || '').trim().toUpperCase();
+        if (termo.length > 0) {
+            buscarSugestoes(); // Re-renderiza com o termo atual
+        } else if (lista.innerHTML.trim() === '' && itens.length > 0) {
+            // Mostra os primeiros itens se campo vazio
+            const primeiros = itens.slice(0, 12);
+            lista.innerHTML = primeiros.map(item => `
+                <div onclick="selecionarSugestao('${item.codigo.replace(/'/g, "\\'")}','${item.nome.replace(/'/g, "\\'")}','${(item.marca || '').replace(/'/g, "\\'")}','${(item.gtinAntigo || '').replace(/'/g, "\\'")}','${(item.locacao || '').replace(/'/g, "\\'")}')"
+                    style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee; line-height:1.3; background:#fff;"
+                    onmouseover="this.style.background='#eef0ff'"
+                    onmouseout="this.style.background='#fff'">
+                    <div style="font-weight:700; color:#00009C; font-size:11px;">${item.codigo} <span style="color:#aaa;font-weight:400;font-size:10px;">— ${item.locacao || ''}</span></div>
+                    <div style="color:#888; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.nome}</div>
+                </div>
+            `).join('');
+        }
+        lista.style.display = 'block';
+        if (btn) btn.textContent = '▲';
+    }
 }
 
 function buscarSugestoes() {
@@ -1181,11 +1223,11 @@ function buscarSugestoes() {
 
     // 3. Renderização da lista (Usando seus tamanhos 11px/10px)
     lista.innerHTML = resultados.map(item => `
-        <div onclick="selecionarSugestao('${item.codigo.replace(/'/g, "\\'")}','${item.nome.replace(/'/g, "\\'")}','${(item.marca || '').replace(/'/g, "\\'")}','${(item.gtinAntigo || '').replace(/'/g, "\\'")}')"
+        <div onclick="selecionarSugestao('${item.codigo.replace(/'/g, "\\'")}','${item.nome.replace(/'/g, "\\'")}','${(item.marca || '').replace(/'/g, "\\'")}','${(item.gtinAntigo || '').replace(/'/g, "\\'")}','${(item.locacao || '').replace(/'/g, "\\'")}')"
             style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee; line-height:1.3; background:#fff;"
             onmouseover="this.style.background='#eef0ff'"
             onmouseout="this.style.background='#fff'">
-            <div style="font-weight:700; color:#00009C; font-size:11px;">${item.codigo}</div>
+            <div style="font-weight:700; color:#00009C; font-size:11px;">${item.codigo} <span style="color:#aaa;font-weight:400;font-size:10px;">— ${item.locacao || ''}</span></div>
             <div style="color:#888; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.nome}</div>
         </div>
     `).join('');
@@ -1283,22 +1325,28 @@ function configurarFocoNovoItem() {
 //fim modal novo
 
 
-function selecionarSugestao(codigo, nome, marca, gtinAntigo) {
+function selecionarSugestao(codigo, nome, marca, gtinAntigo, locacao) {
     document.getElementById('novo-codigo').value = codigo;
     document.getElementById('novo-nome').value = nome;
     document.getElementById('novo-marca').value = marca;
     document.getElementById('novo-gtin-antigo').value = gtinAntigo;
 
-    // IDEIA DE ALERTA: Muda o estilo para indicar que é uma cópia/alternativo
-    const inputNome = document.getElementById('novo-nome');
-    inputNome.style.background = "#eef0ff"; // Um azulzinho leve
+    // Preenche locação se o campo estiver vazio
+    const elLoc = document.getElementById('novo-locacao');
+    if (elLoc && (!elLoc.value || elLoc.value.trim() === '') && locacao) {
+        elLoc.value = locacao;
+        elLoc.style.background = '#eef0ff';
+        setTimeout(() => { elLoc.style.background = ''; }, 2000);
+    }
 
-    // Adiciona uma flag visual ou texto
-    console.log("Item vinculado ao original: " + codigo);
+    const inputNome = document.getElementById('novo-nome');
+    inputNome.style.background = "#eef0ff";
+
+    console.log("Item vinculado ao original: " + codigo + " | Locação: " + locacao);
 
     fecharSugestoes();
 
-    // Foca no GTIN Novo para o usuário bipar o que ele tem em mãos
+    // Foca no GTIN Novo para o usuário bipar o que tem em mãos
     setTimeout(() => {
         const el = document.getElementById('novo-gtin-novo');
         if (el) { el.focus(); el.select(); }
@@ -1943,4 +1991,3 @@ function statCard(label, valor, cor, bg) {
             <span style="font-family:'IBM Plex Mono',monospace; font-size:28px; font-weight:700; color:${cor}; line-height:1;">${valor}</span>
         </div>`;
 }
-

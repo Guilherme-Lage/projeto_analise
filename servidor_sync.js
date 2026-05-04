@@ -190,8 +190,8 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n✅ Servidor rodando!`);
     console.log(`💻 PC:      http://localhost:${PORT}`);
     console.log(`📱 Celular: http://${ipLocal}:${PORT}`);
-    console.log(`🤖 IA:      Ollama local (${OLLAMA_MODEL}) — sem chave, sem limite`);
-    console.log(`\n⚠️  Certifique-se que o Ollama está rodando: ollama serve`);
-    console.log(`⚠️  E que o modelo foi baixado:             ollama pull ${OLLAMA_MODEL}`);
+    // console.log(`🤖 IA:      Ollama local (${OLLAMA_MODEL}) — sem chave, sem limite`);
+    // console.log(`\n⚠️  Certifique-se que o Ollama está rodando: ollama serve`);
+    // console.log(`⚠️  E que o modelo foi baixado:             ollama pull ${OLLAMA_MODEL}`);
     console.log(`\nPressione Ctrl+C para parar.\n`);
 });

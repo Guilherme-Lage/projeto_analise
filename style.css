@@ -613,7 +613,7 @@ tbody tr.loc-destaque.conferido td {
         grid-template-areas:
             "status locacao locacao"
             "status codigo    nome"
-            "status vazio  nome";
+            "status marca  nome";
         padding: 12px 8px;
         border-bottom: 2px solid #e8e8e8;
         gap: 2px 8px;
