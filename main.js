@@ -419,8 +419,6 @@ function processarCSV(texto, nomeArquivo) {
         }
 
         const sep = linhas[0].includes('|') ? '|' : (linhas[0].includes(';') ? ';' : ',');
-        
-        // Proteção no cabeçalho: garante que o valor exista antes de tratar
         const cabecalho = parseLinhaCsv(linhas[0], sep).map(v => (v || "").replace(/^\uFEFF/g, "").toUpperCase().trim());
         
         const idx = (nome) => cabecalho.findIndex(c => c.includes(nome.toUpperCase()));
@@ -435,6 +433,7 @@ function processarCSV(texto, nomeArquivo) {
         itens = [];
 
         if (ehExportado) {
+            // --- LEITURA DE ARQUIVO EXPORTADO (Com as novas colunas) ---
             const iStatus = idx('STATUS');
             const iMarca = idx('MARCA');
             const iQtd = idx('QTD_SISTEMA');
@@ -442,7 +441,11 @@ function processarCSV(texto, nomeArquivo) {
             const iLocacao = idx('LOCACAO');
             const iLocacaoNova = idx('LOCACAO_NOVA');
             const iGtinAntig = idx('GTIN_ANTIGO');
-            const iGtinNovo = idx('GTIN_NOVO');
+            
+            // Prioriza CODIGO_DE_BARRAS, se não achar busca por GTIN_NOVO (compatibilidade)
+            let iGtinLido = idx('CODIGO_DE_BARRAS');
+            if (iGtinLido < 0) iGtinLido = idx('GTIN_NOVO');
+
             const iData = idx('DATA_HORA');
             const fotoCols = cabecalho.reduce((acc, nome, i) => {
                 if (/^FOTO_\d+$/.test(nome)) acc.push(i);
@@ -453,7 +456,6 @@ function processarCSV(texto, nomeArquivo) {
                 const cols = parseLinhaCsv(linhas[i], sep);
                 if (cols.length < 2) continue;
 
-                // Proteção com (cols[index] || '') antes do toUpperCase
                 const statusLido = (iStatus >= 0 ? (cols[iStatus] || '') : '').toUpperCase();
                 const fotos = fotoCols.map(fi => cols[fi] || '').filter(f => f.trim() !== '');
 
@@ -462,6 +464,10 @@ function processarCSV(texto, nomeArquivo) {
                 const isOk = statusLido === 'OK';
                 const conferido = isOk || isAlt || isNovo;
 
+                // Captura o GTIN e limpa se for "SEM GTIN"
+                let gtinLido = iGtinLido >= 0 ? (cols[iGtinLido] || '').trim() : '';
+                if (gtinLido.toUpperCase() === 'SEM GTIN') gtinLido = '';
+
                 itens.push({
                     itemEstoque: iItemEstoque >= 0 ? (cols[iItemEstoque] || '') : '',
                     codigo: iItemEstoquePub >= 0 ? (cols[iItemEstoquePub] || '') : '',
@@ -469,7 +475,6 @@ function processarCSV(texto, nomeArquivo) {
                     utilizacao: iUtilizacao >= 0 ? (cols[iUtilizacao] || '') : '',
                     locacaoOriginal: (iLocacao >= 0 ? (cols[iLocacao] || '') : '').toUpperCase(),
                     locacaoNova: (iLocacaoNova >= 0 ? (cols[iLocacaoNova] || '') : '').toUpperCase(),
-                    trocaLocacao: (iLocacaoNova >= 0 && (cols[iLocacaoNova] || '').trim() !== ''),
                     locacao: (() => {
                         const nova = (iLocacaoNova >= 0 ? (cols[iLocacaoNova] || '') : '').trim().toUpperCase();
                         const orig = (iLocacao >= 0 ? (cols[iLocacao] || '') : '').trim().toUpperCase();
@@ -482,12 +487,13 @@ function processarCSV(texto, nomeArquivo) {
                     isNovoItem: isNovo,
                     qtdConferida: (iQtdConf >= 0 && cols[iQtdConf] !== '') ? parseFloat(cols[iQtdConf]) : null,
                     gtinAntigo: (iGtinAntig >= 0 ? (cols[iGtinAntig] || '') : '').toUpperCase(),
-                    gtinNovo: (iGtinNovo >= 0 ? (cols[iGtinNovo] || '') : '').toUpperCase(),
+                    gtinNovo: gtinLido, // Armazena o código real ou vazio (sem a string "SEM GTIN")
                     dataHoraRegistro: iData >= 0 ? cols[iData] : null,
                     fotos: fotos
                 });
             }
         } else {
+            // --- LEITURA DE ARQUIVO ORIGINAL DO SISTEMA ---
             const iQtd = idx('QTD_CONTABIL');
             const iMarcaCSV = idx('MARCA');
             const iZona = idx('LOCACAO_ZONA');
@@ -495,7 +501,8 @@ function processarCSV(texto, nomeArquivo) {
             const iEstante = idx('LOCACAO_ESTANTE');
             const iPrateleira = idx('LOCACAO_PRATELEIRA');
             const iNumero = idx('LOCACAO_NUMERO');
-            let iGtin = idx('COD_EAN_GTIN'); if (iGtin < 0) iGtin = idx('GTIN');
+            let iGtin = idx('COD_EAN_GTIN');
+            if (iGtin < 0) iGtin = idx('GTIN');
 
             for (let i = 1; i < linhas.length; i++) {
                 const cols = parseLinhaCsv(linhas[i], sep);
@@ -525,7 +532,7 @@ function processarCSV(texto, nomeArquivo) {
         itens.sort((a, b) => a.locacao.localeCompare(b.locacao, undefined, { numeric: true }));
         renderizarTabela(itens);
         atualizarContador();
-        
+
         let elInfo = document.getElementById('info-arquivo');
         if (!elInfo) {
             elInfo = document.createElement('div');
@@ -543,7 +550,6 @@ function processarCSV(texto, nomeArquivo) {
         alert("Erro ao ler o arquivo: " + erro.message);
     }
 }
-
 
 function renderizarTabela(lista) {
     const corpo = document.getElementById('corpo');
@@ -743,11 +749,12 @@ function exportarCSV() {
         }
 
         const maxFotos = 5;
-        // 1. Cabeçalho rigoroso
+        // 1. Cabeçalho alinhado
         let colunas = [
             'STATUS', 'ITEM_ESTOQUE', 'ITEM_ESTOQUE_PUB', 'DES_ITEM_ESTOQUE', 
             'MARCA', 'UTILIZACAO_ITEM', 'QTD_SISTEMA', 'QTD_CONFERIDA', 
-            'LOCACAO', 'LOCACAO_NOVA', 'GTIN_ANTIGO', 'GTIN_NOVO', 'DATA_HORA'
+            'LOCACAO', 'LOCACAO_NOVA', 'GTIN_ANTIGO', 'CODIGO_DE_BARRAS', 
+            'GTIN', 'DATA_HORA'
         ];
 
         for (let i = 1; i <= maxFotos; i++) {
@@ -759,7 +766,7 @@ function exportarCSV() {
         itens.forEach(item => {
             const qtdC = item.qtdConferida != null ? item.qtdConferida : '';
             
-            // Lógica de Status (Incluindo ALERTA e NOVO)
+            // Lógica de Status
             const locacoesIniciadas = [...new Set(itens.filter(i => i.conferido).map(i => i.locacao))];
             const estaConferido = item.conferido === true;
             const ehAlerta = !estaConferido && locacoesIniciadas.includes(item.locacao);
@@ -770,22 +777,30 @@ function exportarCSV() {
             else if (ehAlerta) statusExport = 'ALERTA';
             else if (estaConferido) statusExport = 'OK';
 
+            // Lógica de GTIN (13 dígitos)
+            const valorBipado = (item.gtinNovo || '').toString().trim();
+            const gtinColuna = /^\d{13}$/.test(valorBipado) ? valorBipado : 'SEM GTIN';
+
+            // --- TRATAMENTO DE TEXTO (A PROTEÇÃO CONTRA O ERRO) ---
+            // Esta função substitui uma aspa " por duas "" para o CSV não quebrar
+            const limpar = (texto) => (texto || '').toString().trim().replace(/"/g, '""');
+
             // 2. Montagem do Registro - ORDEM EXATA DAS COLUNAS
-            // Usamos .trim() para evitar que espaços joguem o texto para o lado como na imagem
             let registro = [
-                statusExport,                                // STATUS
-                (item.itemEstoque || '').toString().trim(),  // ITEM_ESTOQUE
-                (item.codigo || '').toString().trim(),       // ITEM_ESTOQUE_PUB
-                `"${(item.nome || '').trim()}"`,             // DES_ITEM_ESTOQUE
-                (item.marca || '').trim(),                   // MARCA
-                `"${(item.utilizacao || '').trim()}"`,       // UTILIZACAO_ITEM
-                item.qtd || 0,                               // QTD_SISTEMA
-                qtdC,                                        // QTD_CONFERIDA
-                (item.locacaoOriginal || item.locacao || '').trim(), // LOCACAO
-                (item.locacaoNova || '').trim(),             // LOCACAO_NOVA
-                (item.gtinAntigo || '').trim(),              // GTIN_ANTIGO
-                (item.gtinNovo || '').trim(),                // GTIN_NOVO
-                (item.dataHoraRegistro || '').trim()         // DATA_HORA
+                statusExport,
+                limpar(item.itemEstoque),
+                limpar(item.codigo),
+                `"${limpar(item.nome)}"`,       // DES_ITEM_ESTOQUE (Protegido)
+                limpar(item.marca),
+                `"${limpar(item.utilizacao)}"`, // UTILIZACAO_ITEM (Protegido)
+                item.qtd || 0,
+                qtdC,
+                limpar(item.locacaoOriginal || item.locacao),
+                limpar(item.locacaoNova),
+                limpar(item.gtinAntigo),
+                valorBipado === '' ? 'SEM GTIN' : valorBipado,
+                gtinColuna,
+                limpar(item.dataHoraRegistro)
             ];
 
             // 3. Fotos
@@ -794,11 +809,10 @@ function exportarCSV() {
                 registro.push(`"${foto}"`);
             }
 
-            // Unimos com o separador pipe sem espaços em volta
             linhas.push(registro.join('|'));
         });
 
-        // 4. Geração do arquivo (UTF-8 com BOM para o Excel ler acentos)
+        // 4. Geração do arquivo (UTF-8 com BOM)
         const csvContent = "\uFEFF" + linhas.join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -814,10 +828,6 @@ function exportarCSV() {
         console.error("Erro ao exportar:", erro);
     }
 }
-
-
-
-
 
 function alternarConferidos() {
     ocultar = !ocultar;
@@ -837,7 +847,6 @@ async function confirmarModal() {
         const elGtinN = document.getElementById('modal-gtin-novo');
         const elMarca = document.getElementById('modal-marca');
         const elQtd = document.getElementById('modal-qtdo');
-
         if (elGtinN) item.gtinNovo = elGtinN.value.trim().toUpperCase();
         if (elMarca) item.marca = elMarca.value.trim().toUpperCase();
         if (elQtd) item.qtdConferida = elQtd.value !== '' ? parseFloat(elQtd.value) : 0;
@@ -845,7 +854,6 @@ async function confirmarModal() {
         // 2. Gerencia TROCA DE LOCAÇÃO
         const inputNova = document.getElementById('modal-locacao-nova');
         const btn = document.getElementById('modal-status-loc');
-
         if (btn.textContent === "X" && inputNova.value.trim() !== "") {
             if (!item.locacaoOriginal) item.locacaoOriginal = item.locacao;
             item.trocaLocacao = true;
@@ -859,26 +867,26 @@ async function confirmarModal() {
 
         // 3. Status e Data
         item.conferido = true;
-        item.dataHoraRegistro = new Date().toLocaleDateString('pt-BR') + ' ' +
-            new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        item.dataHoraRegistro = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        // VIBRAR AQUI (Feedback imediato da gravação dos dados)
+        vibrarDispositivo('sucesso');
 
         // 4. Log e Backup
         try { adicionarLog(item); } catch (e) { }
         await salvarBackup();
 
-        // ─── ADICIONADO AQUI: Guarda o índice antes dele virar -1 ───
         const indiceParaRolar = idxModalAtual;
-        // ────────────────────────────────────────────────────────────
 
-        // 5. FECHAR MODAL PRIMEIRO (Aqui dentro roda o idxModalAtual = -1)
+        // 5. FECHAR MODAL
         fecharModal();
 
-        // 6. RESTAURAR CONTEXTO (ESTANTE) ANTES DE SINCRONIZAR
+        // 6. RESTAURAR CONTEXTO
         ultimaLocacaoClicada = "";
         if (contextoAnterior) {
             document.getElementById('filtro-tipo').value = contextoAnterior.tipo;
             document.getElementById('busca').value = contextoAnterior.valor;
-            filtrar(); // Aplica o filtro da estante localmente
+            filtrar();
         } else {
             document.getElementById('busca').value = "";
             document.getElementById('filtro-tipo').value = "todos";
@@ -887,19 +895,15 @@ async function confirmarModal() {
 
         // 7. SINCRONIZA
         syncPublicar();
-
         atualizarContador();
-
-        // ─── ALTERADO AQUI: Passamos a variável temporária com o ID certo ───
         centralizarItemNaTela(indiceParaRolar);
-        // ───────────────────────────────────────────────────────────────────
 
     } catch (erro) {
         console.error("Erro ao confirmar:", erro);
+        vibrarDispositivo('erro'); // Opcional: vibrar erro se algo falhar
         fecharModal();
     }
 }
-
 window.onload = async () => {
     try {
 
@@ -1990,4 +1994,16 @@ function statCard(label, valor, cor, bg) {
             <span style="font-family:'IBM Plex Mono',monospace; font-size:10px; color:#888; letter-spacing:0.08em; text-transform:uppercase;">${label}</span>
             <span style="font-family:'IBM Plex Mono',monospace; font-size:28px; font-weight:700; color:${cor}; line-height:1;">${valor}</span>
         </div>`;
+} 
+
+function vibrarDispositivo(tipo) {
+    if (!navigator.vibrate) return; // Se o navegador não suportar, não faz nada
+
+    if (tipo === 'sucesso') {
+        navigator.vibrate(50); // Vibração curta e única
+    } else if (tipo === 'erro') {
+        navigator.vibrate([100, 50, 100]); // Duas vibrações (aviso)
+    } else if (tipo === 'alerta') {
+        navigator.vibrate([200, 100, 200]); // Vibração mais longa para atenção
+    }
 }

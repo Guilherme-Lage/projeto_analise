@@ -651,12 +651,31 @@ tbody tr.loc-destaque.conferido td {
         text-align: right;
     }
 
+    /* Dentro do seu @media (max-width: 700px) */
+
+    /* Ajuste na área do código para permitir a marca embaixo */
     td.col-codigo {
-        align-items: top;
         grid-area: codigo;
         font-size: 14px;
         font-weight: 600;
+        display: flex;
+        flex-direction: column;
+        /* Faz um ficar embaixo do outro */
+        align-items: flex-start;
     }
+
+    td.col-marca {
+        display: block !important;
+        /* Força aparecer no celular */
+        grid-area: marca;
+        font-size: 11px;
+        color: #000;
+        font-weight: 600;
+        text-align: left;
+        /* Alinhada com o código */
+    }
+
+    /* Estilo para a marca que só aparece no celular */
 
     td.col-gtin {
         grid-area: locacao;
@@ -1014,6 +1033,7 @@ tbody tr.conferido {
     background: #fff9c4;
     font-weight: bold;
 }
+
 /* Container Principal */
 .linha-botoes {
     display: grid;
@@ -1023,12 +1043,30 @@ tbody tr.conferido {
 }
 
 /* Identificação de cada item para o Grid */
-.linha-botoes > button:nth-child(1) { grid-area: abrir; }
-.linha-botoes > button:nth-child(2) { grid-area: exportar; }
-.menu-config                       { grid-area: config; } /* A Div da engrenagem */
-.linha-botoes > button:nth-child(4) { grid-area: todos; }
-.linha-botoes > button:nth-child(5) { grid-area: alertas; }
-.linha-botoes > button:nth-child(6) { grid-area: novo; }
+.linha-botoes>button:nth-child(1) {
+    grid-area: abrir;
+}
+
+.linha-botoes>button:nth-child(2) {
+    grid-area: exportar;
+}
+
+.menu-config {
+    grid-area: config;
+}
+
+/* A Div da engrenagem */
+.linha-botoes>button:nth-child(4) {
+    grid-area: todos;
+}
+
+.linha-botoes>button:nth-child(5) {
+    grid-area: alertas;
+}
+
+.linha-botoes>button:nth-child(6) {
+    grid-area: novo;
+}
 
 /* --- NO PC (Telas grandes) --- */
 @media (min-width: 769px) {
@@ -1036,7 +1074,7 @@ tbody tr.conferido {
         /* 6 colunas iguais */
         grid-template-columns: repeat(6, 1fr);
         /* Config no final da linha */
-        grid-template-areas: 
+        grid-template-areas:
             "abrir exportar todos alertas novo config";
     }
 }
@@ -1046,7 +1084,7 @@ tbody tr.conferido {
     .linha-botoes {
 
         grid-template-columns: repeat(3, 1fr);
-        grid-template-areas: 
+        grid-template-areas:
             "abrir exportar config"
             "todos alertas novo";
     }
@@ -1242,6 +1280,7 @@ tbody tr.conferido {
     border-radius: 4px;
     font-size: 16px;
 }
+
 /* ── Botão IA Gemini ── */
 .btn-ia-gemini {
     display: flex;
@@ -1262,15 +1301,23 @@ tbody tr.conferido {
     justify-content: center;
     margin-bottom: 8px;
     transition: opacity 0.2s, transform 0.1s;
-    box-shadow: 0 2px 6px rgba(0,0,140,0.25);
+    box-shadow: 0 2px 6px rgba(0, 0, 140, 0.25);
 }
-.btn-ia-gemini:hover  { opacity: 0.88; }
-.btn-ia-gemini:active { transform: scale(0.98); }
+
+.btn-ia-gemini:hover {
+    opacity: 0.88;
+}
+
+.btn-ia-gemini:active {
+    transform: scale(0.98);
+}
+
 .btn-ia-gemini:disabled {
     opacity: 0.55;
     cursor: not-allowed;
     background: #888;
 }
+
 /* ── Botão Verificar com IA (dentro do modal) ── */
 .btn-verificar-ia {
     display: flex;
@@ -1292,8 +1339,14 @@ tbody tr.conferido {
     margin-bottom: 8px;
     transition: opacity 0.2s;
 }
-.btn-verificar-ia:hover  { opacity: 0.85; }
-.btn-verificar-ia:active { opacity: 0.7; }
+
+.btn-verificar-ia:hover {
+    opacity: 0.85;
+}
+
+.btn-verificar-ia:active {
+    opacity: 0.7;
+}
 
 /* ── Textarea de nome no modal (auto-resize) ── */
 .modal-nome-textarea {
@@ -1312,7 +1365,10 @@ tbody tr.conferido {
     resize: none;
     overflow: hidden;
 }
-.modal-nome-textarea:focus { border-bottom: 1.5px solid #00009C; }
+
+.modal-nome-textarea:focus {
+    border-bottom: 1.5px solid #00009C;
+}
 
 .quadrado.ok-novo {
     background-color: #2d7a4a !important;
