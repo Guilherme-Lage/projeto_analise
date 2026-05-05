@@ -420,7 +420,7 @@ function processarCSV(texto, nomeArquivo) {
 
         const sep = linhas[0].includes('|') ? '|' : (linhas[0].includes(';') ? ';' : ',');
         const cabecalho = parseLinhaCsv(linhas[0], sep).map(v => (v || "").replace(/^\uFEFF/g, "").toUpperCase().trim());
-        
+
         const idx = (nome) => cabecalho.findIndex(c => c.includes(nome.toUpperCase()));
         const idxExato = (nome) => cabecalho.findIndex(c => c === nome.toUpperCase());
 
@@ -441,7 +441,7 @@ function processarCSV(texto, nomeArquivo) {
             const iLocacao = idx('LOCACAO');
             const iLocacaoNova = idx('LOCACAO_NOVA');
             const iGtinAntig = idx('GTIN_ANTIGO');
-            
+
             // Prioriza CODIGO_DE_BARRAS, se não achar busca por GTIN_NOVO (compatibilidade)
             let iGtinLido = idx('CODIGO_DE_BARRAS');
             if (iGtinLido < 0) iGtinLido = idx('GTIN_NOVO');
@@ -631,7 +631,7 @@ function renderizarTabela(lista) {
 
 function atualizarContador() {
     // Atualiza botão de estatísticas no dropdown (mini resumo)
-    const conf  = itens.filter(i => i.conferido).length;
+    const conf = itens.filter(i => i.conferido).length;
     const total = itens.length;
     const btnStats = document.getElementById('btn-stats-mini');
     if (btnStats) {
@@ -749,12 +749,22 @@ function exportarCSV() {
         }
 
         const maxFotos = 5;
-        // 1. Cabeçalho alinhado
+        // 1. Cabeçalho rigoroso (A ordem aqui manda em tudo)
         let colunas = [
-            'STATUS', 'ITEM_ESTOQUE', 'ITEM_ESTOQUE_PUB', 'DES_ITEM_ESTOQUE', 
-            'MARCA', 'UTILIZACAO_ITEM', 'QTD_SISTEMA', 'QTD_CONFERIDA', 
-            'LOCACAO', 'LOCACAO_NOVA', 'GTIN_ANTIGO', 'CODIGO_DE_BARRAS', 
-            'GTIN', 'DATA_HORA'
+            'STATUS',
+            'ITEM_ESTOQUE',
+            'ITEM_ESTOQUE_PUB',
+            'DES_ITEM_ESTOQUE',
+            'MARCA',
+            'UTILIZACAO_ITEM',
+            'QTD_SISTEMA',
+            'QTD_CONFERIDA',
+            'LOCACAO',
+            'LOCACAO_NOVA',
+            'GTIN_ANTIGO',
+            'CODIGO_DE_BARRAS',
+            'GTIN',
+            'DATA_HORA'
         ];
 
         for (let i = 1; i <= maxFotos; i++) {
@@ -765,7 +775,7 @@ function exportarCSV() {
 
         itens.forEach(item => {
             const qtdC = item.qtdConferida != null ? item.qtdConferida : '';
-            
+
             // Lógica de Status
             const locacoesIniciadas = [...new Set(itens.filter(i => i.conferido).map(i => i.locacao))];
             const estaConferido = item.conferido === true;
@@ -781,32 +791,36 @@ function exportarCSV() {
             const valorBipado = (item.gtinNovo || '').toString().trim();
             const gtinColuna = /^\d{13}$/.test(valorBipado) ? valorBipado : 'SEM GTIN';
 
-            // --- TRATAMENTO DE TEXTO (A PROTEÇÃO CONTRA O ERRO) ---
-            // Esta função substitui uma aspa " por duas "" para o CSV não quebrar
-            const limpar = (texto) => (texto || '').toString().trim().replace(/"/g, '""');
+            // Função para limpar aspas e espaços (Proteção contra o erro da imagem)
+            const limpar = (t) => (t || '').toString().trim().replace(/"/g, '""');
 
-            // 2. Montagem do Registro - ORDEM EXATA DAS COLUNAS
+            // 2. Montagem do Registro - DEVE SEGUIR A MESMA ORDEM DO CABEÇALHO
+            // Adicionamos um caractere de tabulação (\t) antes do número. 
+            // O Excel vê isso e aceita o zero à esquerda sem mostrar nada estranho.
+            const forcarTexto = (valor) => `\t${limpar(valor)}`;
+
             let registro = [
                 statusExport,
                 limpar(item.itemEstoque),
-                limpar(item.codigo),
-                `"${limpar(item.nome)}"`,       // DES_ITEM_ESTOQUE (Protegido)
+                forcarTexto(item.codigo),               // Força texto com tabulação invisível
+                `"${limpar(item.nome)}"`,
                 limpar(item.marca),
-                `"${limpar(item.utilizacao)}"`, // UTILIZACAO_ITEM (Protegido)
+                `"${limpar(item.utilizacao)}"`,
                 item.qtd || 0,
                 qtdC,
                 limpar(item.locacaoOriginal || item.locacao),
                 limpar(item.locacaoNova),
-                limpar(item.gtinAntigo),
-                valorBipado === '' ? 'SEM GTIN' : valorBipado,
-                gtinColuna,
+                forcarTexto(item.gtinAntigo),           // Força texto
+                forcarTexto(valorBipado === '' ? 'SEM GTIN' : valorBipado),
+                forcarTexto(gtinColuna),
                 limpar(item.dataHoraRegistro)
             ];
+
 
             // 3. Fotos
             for (let i = 0; i < maxFotos; i++) {
                 const foto = item.fotos && item.fotos[i] ? item.fotos[i] : "";
-                registro.push(`"${foto}"`);
+                registro.push(`"${limpar(foto)}"`);
             }
 
             linhas.push(registro.join('|'));
@@ -828,6 +842,7 @@ function exportarCSV() {
         console.error("Erro ao exportar:", erro);
     }
 }
+
 
 function alternarConferidos() {
     ocultar = !ocultar;
@@ -1913,11 +1928,11 @@ function fecharEstatisticas() {
 }
 
 function abrirEstatisticas() {
-    const total       = itens.length;
-    const conferidos  = itens.filter(i => i.conferido).length; // inclui novos e alternativos
-    const novos       = itens.filter(i => i.isNovoItem === true).length;
-    const alternativos= itens.filter(i => i.ehAlternativo === true).length;
-    const pendentes   = itens.filter(i => !i.conferido).length;
+    const total = itens.length;
+    const conferidos = itens.filter(i => i.conferido).length; // inclui novos e alternativos
+    const novos = itens.filter(i => i.isNovoItem === true).length;
+    const alternativos = itens.filter(i => i.ehAlternativo === true).length;
+    const pendentes = itens.filter(i => !i.conferido).length;
 
     // Alerta: itens pendentes em locação que tem pelo menos 1 conferido
     const locacoesComConf = new Set(itens.filter(i => i.conferido).map(i => i.locacao));
@@ -1926,14 +1941,14 @@ function abrirEstatisticas() {
     // GTIN Novo = GTIN Antigo (possível erro / sem mudança)
     const gtinIgual = itens.filter(i => {
         const ant = (i.gtinAntigo || '').trim();
-        const nov = (i.gtinNovo   || '').trim();
+        const nov = (i.gtinNovo || '').trim();
         return nov && ant && nov === ant;
     }).length;
 
     // GTIN Novo preenchido (foi atualizado)
     const gtinAtualizado = itens.filter(i => {
         const ant = (i.gtinAntigo || '').trim();
-        const nov = (i.gtinNovo   || '').trim();
+        const nov = (i.gtinNovo || '').trim();
         return nov && nov !== ant;
     }).length;
 
@@ -1959,11 +1974,11 @@ function abrirEstatisticas() {
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1px; background:#eee;">
 
             ${statCard('✅ Conferidos', conferidos, '#2d7a4a', '#edf7f0')}
-            ${statCard('⏳ Pendentes',  pendentes,   '#CC0000', '#fff0f0')}
-            ${statCard('⚠️ Alertas',    alertas,     '#b87d00', '#fff9c4')}
-            ${statCard('➕ Novos',      novos,        '#00009C', '#eef0ff')}
+            ${statCard('⏳ Pendentes', pendentes, '#CC0000', '#fff0f0')}
+            ${statCard('⚠️ Alertas', alertas, '#b87d00', '#fff9c4')}
+            ${statCard('➕ Novos', novos, '#00009C', '#eef0ff')}
             ${statCard('🔄 Alternativos', alternativos, '#6a0dad', '#f5eeff')}
-            ${statCard('📦 Total',      total,        '#1a1a1a', '#f7f7f7')}
+            ${statCard('📦 Total', total, '#1a1a1a', '#f7f7f7')}
         </div>
 
         <!-- GTIN -->
@@ -1994,7 +2009,7 @@ function statCard(label, valor, cor, bg) {
             <span style="font-family:'IBM Plex Mono',monospace; font-size:10px; color:#888; letter-spacing:0.08em; text-transform:uppercase;">${label}</span>
             <span style="font-family:'IBM Plex Mono',monospace; font-size:28px; font-weight:700; color:${cor}; line-height:1;">${valor}</span>
         </div>`;
-} 
+}
 
 function vibrarDispositivo(tipo) {
     if (!navigator.vibrate) return; // Se o navegador não suportar, não faz nada
